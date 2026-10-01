@@ -1,0 +1,1 @@
+import Link from 'next/link';export default function About(){return <main className="mx-auto min-h-screen max-w-[430px] p-6"><Link href="/" className="text-fuchsia-200">← 返回</Link><h1 className="mt-8 text-3xl font-bold">关于本产品</h1><p className="mt-6 leading-8 text-white/70">本产品仅使用歌单元数据进行互动选择游戏，不提供音乐播放、下载或缓存功能。所有音频播放行为均应跳转至 QQ 音乐官方 App 完成。</p></main>}

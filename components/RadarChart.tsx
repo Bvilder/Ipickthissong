@@ -1,0 +1,2 @@
+import type {Dimension} from '@/lib/types';
+export default function RadarChart({dimensions}:{dimensions:Dimension[]}){return <div className="grid grid-cols-3 gap-3">{dimensions.map(d=><div key={d.name} className="rounded-2xl bg-white/8 p-3 text-center"><div className="text-xl font-bold text-fuchsia-200">{d.score}</div><div className="mt-1 text-xs text-white/60">{d.name}</div></div>)}</div>}

@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';export async function POST(){return NextResponse.json({tags:['旋律原教旨主义者','深夜循环党','副歌捕手'],dimensions:[{name:'旋律偏好',score:92},{name:'节奏敏感',score:74},{name:'情绪深度',score:96},{name:'怀旧倾向',score:68},{name:'冷门挖掘',score:61},{name:'副歌执念',score:88}],verdict:'你不是在听歌，你是在为每一段情绪挑选最贴切的宇宙。旋律一响，世界自动静音。'})}
