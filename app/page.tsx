@@ -1,4 +1,110 @@
 'use client';
-import Link from 'next/link';import {useState} from 'react';import {useRouter} from 'next/navigation';import {motion} from 'framer-motion';import {getPopularSongs} from '@/lib/musicProvider';import {useGameStore} from '@/store/useGameStore';
-const songs=getPopularSongs();
-export default function Home(){const start=useGameStore(s=>s.start);const router=useRouter();const [selected,setSelected]=useState<string[]>(songs.slice(0,32).map(s=>s.id));const [importing,setImporting]=useState(false);const toggle=(id:string)=>setSelected(v=>v.includes(id)?v.filter(x=>x!==id):v.length<32?[...v,id]:v);const fakeImport=()=>{setImporting(true);setTimeout(()=>{setSelected([...songs].sort(()=>Math.random()-.5).slice(0,32).map(s=>s.id));setImporting(false)},1100)};const begin=()=>{if(selected.length===32){start(songs.filter(s=>selected.includes(s.id)));router.push('/play')}};return <main className="grain relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-5 py-8 safe-bottom"><i className="aurora -left-24 -top-20 h-64 w-64 bg-fuchsia-600"/><i className="aurora aurora-two -right-28 top-48 h-60 w-60 bg-cyan-600"/><div className="relative"><motion.header initial={{opacity:0,y:12}} animate={{opacity:1,y:0}}><div className="flex items-center justify-between"><p className="text-[11px] font-bold tracking-[.3em] text-fuchsia-200">MUSIC PERSONA</p><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] text-white/55">VOL. 01</span></div><h1 className="mt-5 text-5xl font-black leading-[.96] tracking-tight">我选<br/><span className="bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-200 bg-clip-text text-transparent">这首歌</span></h1><p className="mt-5 max-w-[270px] text-sm leading-6 text-white/60">不是测评，是一次只属于你的音乐淘汰赛。</p></motion.header><motion.section initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{delay:.12}} className="mt-9 rounded-[1.8rem] border border-white/12 bg-white/[.055] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold tracking-[.2em] text-cyan-200">YOUR STARTING 32</p><h2 className="mt-2 text-lg font-black">邓紫棋 · 热门 50 首</h2><p className="mt-1 text-xs text-white/50">已锁定 <b className="text-white">{selected.length}</b> / 32 首</p></div><button onClick={fakeImport} disabled={importing} className="shrink-0 rounded-xl border border-fuchsia-200/25 bg-fuchsia-500/80 px-3 py-2 text-xs font-bold shadow-lg shadow-fuchsia-900/30">{importing?'正在同步…':'自动导入'}</button></div><p className="mt-4 rounded-xl border border-white/5 bg-black/15 px-3 py-2 text-[11px] leading-5 text-white/40">演示功能：未来经 QQ 音乐授权读取歌单元数据。只用元数据，不读取、不保存音频。</p><div className="mt-5 grid grid-cols-2 gap-2">{songs.map((song,i)=><button onClick={()=>toggle(song.id)} key={song.id} className={`rounded-xl border px-3 py-2.5 text-left text-xs transition ${selected.includes(song.id)?'border-fuchsia-300/70 bg-fuchsia-400/15 text-white shadow-sm shadow-fuchsia-800/20':'border-white/8 bg-black/10 text-white/42'}`}><span className="mr-1.5 text-[10px] text-white/30">{String(i+1).padStart(2,'0')}</span>{song.title}<span className="float-right text-fuchsia-200">{selected.includes(song.id)?'✓':''}</span></button>)}</div></motion.section><button disabled={selected.length!==32} onClick={begin} className="relative mt-5 w-full overflow-hidden rounded-2xl bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 py-4 font-bold shadow-xl shadow-fuchsia-950/40 transition active:scale-[.99] disabled:opacity-30"><span className="relative">开启我的 32 强淘汰赛 <b className="ml-1">→</b></span><i className="shine absolute inset-0"/></button><section className="mt-9"><p className="mb-3 text-[11px] font-bold tracking-[.2em] text-white/40">MORE MODES</p><div className="grid grid-cols-2 gap-3"><div className="rounded-2xl border border-white/10 bg-white/[.035] p-4 text-white/45"><span className="text-lg">A–Z</span><br/><b className="mt-2 block text-sm text-white/65">A-Z 挑战</b><small>即将上线</small></div><div className="rounded-2xl border border-white/10 bg-white/[.035] p-4 text-white/45"><span className="text-lg">✦</span><br/><b className="mt-2 block text-sm text-white/65">好友共创</b><small>即将上线</small></div></div></section><Link className="mt-8 block text-center text-xs text-white/35 underline" href="/about">关于与合规说明</Link></div></main>}
+
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import { motion } from 'framer-motion';
+import ModeCard from '@/components/ModeCard';
+
+function HomeInner() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const code = params.get('c');
+
+  return (
+    <main className="grain relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-5 py-8 safe-bottom">
+      <i className="aurora -left-24 -top-20 h-64 w-64 bg-fuchsia-600" />
+      <i className="aurora aurora-two -right-28 top-48 h-60 w-60 bg-cyan-600" />
+
+      <div className="relative">
+        <motion.header initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold tracking-[.3em] text-fuchsia-200">MUSIC PERSONA</p>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] text-white/55">
+              VOL. 01
+            </span>
+          </div>
+          <h1 className="mt-5 text-5xl font-black leading-[.96] tracking-tight">
+            我选
+            <br />
+            <span className="bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-200 bg-clip-text text-transparent">
+              这首歌
+            </span>
+          </h1>
+          <p className="mt-5 max-w-[280px] text-sm leading-6 text-white/60">
+            不是测评，是一次只属于你的音乐淘汰赛。31 次二选一之后，你会看见自己的音乐人格。
+          </p>
+        </motion.header>
+
+        {code && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => router.push(`/challenge?c=${code}`)}
+            className="mt-7 flex w-full items-center gap-3 rounded-2xl border border-cyan-200/30 bg-cyan-300/10 p-4 text-left"
+          >
+            <span className="text-2xl">⚔️</span>
+            <span className="flex-1">
+              <b className="block text-sm text-white">有人向你发起挑战</b>
+              <small className="text-[11px] text-white/55">同一批歌，看你们能有多默契 →</small>
+            </span>
+          </motion.button>
+        )}
+
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="mt-9"
+        >
+          <p className="mb-3 text-[11px] font-bold tracking-[.2em] text-white/40">选择你的玩法</p>
+          <div className="space-y-3">
+            <ModeCard
+              emoji="🏆"
+              eyebrow="BRACKET 32"
+              title="32 强淘汰赛"
+              desc="从 32 首里两两对决，31 次选择后决出你最爱的那一首，并生成音乐人格卡。"
+              href="/select"
+              highlight
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <ModeCard
+                emoji="A–Z"
+                eyebrow="A TO Z"
+                title="A-Z 挑战"
+                desc="每个字母选一首最爱，26 个答案拼成你的字母表。"
+                soon
+              />
+              <ModeCard
+                emoji="✦"
+                eyebrow="CO-CREATE"
+                title="好友共创"
+                desc="多人给同一批歌评分，算出默契度与分歧曲目。"
+                soon
+              />
+            </div>
+          </div>
+        </motion.section>
+
+        <p className="mt-8 rounded-2xl border border-white/8 bg-black/15 px-4 py-3 text-[11px] leading-5 text-white/40">
+          全程只使用歌曲元数据（歌名、专辑、年份、流派、标签），不播放、不下载、不缓存任何音频；收听请跳转 QQ 音乐官方平台。
+        </p>
+
+        <Link
+          className="mt-7 block text-center text-xs text-white/35 underline"
+          href="/about"
+        >
+          关于与合规说明
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<main className="min-h-screen" />}>
+      <HomeInner />
+    </Suspense>
+  );
+}
