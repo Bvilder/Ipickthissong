@@ -1,4 +1,4 @@
-import type { Choice, Dimension, PersonalityResult, Song } from './types';
+import type { Choice, Dimension, PersonalityResult, Reason, Song } from './types';
 
 /**
  * 音乐人格引擎（本地规则版）
@@ -211,6 +211,8 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   const depth = new Map<string, number>();
   let totalW = 0;
   let upset: { song: Song; round: number } | undefined;
+  /** 每个维度贡献最大的那一次选择，用于「为什么这么判」 */
+  const topReason = new Map<DimKey, { delta: number; text: string }>();
 
   for (const c of choices) {
     // 越到后面权重越高：决赛的一次选择，比首轮更能说明你是谁
@@ -222,12 +224,28 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
     const wv = vector(winner);
     const lv = vector(loser);
 
+    const note = (k: DimKey, delta: number) => {
+      const cur = topReason.get(k);
+      if (!cur || delta > cur.delta) {
+        topReason.set(k, {
+          delta,
+          text: `${roundLabel(c.round, mode)}留下《${winner?.title ?? ''}》、送走《${loser?.title ?? ''}》`,
+        });
+      }
+    };
+
     for (const k of DIM_KEYS) {
-      acc[k] += w * (wv[k] - 0.35 * lv[k]);
+      const delta = w * (wv[k] - 0.35 * lv[k]);
+      acc[k] += delta;
+      note(k, delta);
     }
     // 选了冷门 / 年代更久的那首，会分别推高这两个维度
-    acc.discovery += w * (heat(c.winnerId) - heat(c.loserId)) * 6;
-    acc.nostalgia += w * (oldness(c.winnerId) - 0.35 * oldness(c.loserId)) * 4;
+    const dDelta = w * (heat(c.winnerId) - heat(c.loserId)) * 6;
+    const nDelta = w * (oldness(c.winnerId) - 0.35 * oldness(c.loserId)) * 4;
+    acc.discovery += dDelta;
+    acc.nostalgia += nDelta;
+    note('discovery', dDelta);
+    note('nostalgia', nDelta);
 
     // 记录每首歌走到第几轮（1 = 首轮出局，6 = 冠军）
     depth.set(c.winnerId, Math.max(depth.get(c.winnerId) ?? 0, c.round + 1));
@@ -352,11 +370,22 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   const pool = mode === 'az' ? azTemplates : templates;
   const verdict = pool[hash(`${winnerId ?? 'az'}${choices.length}`) % pool.length];
 
+  const reasons: Reason[] = [...scored]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((s) => ({
+      dimension: DIMENSIONS.find((d) => d.key === s.key)?.name ?? '',
+      score: s.score,
+      text: topReason.get(s.key)?.text ?? '整体选择倾向一致',
+    }))
+    .filter((r) => r.dimension);
+
   return {
     tags: uniqueTags,
     dimensions,
     verdict,
     highlights,
+    reasons,
     source: 'local',
   };
 }

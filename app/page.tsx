@@ -91,7 +91,7 @@ function HomeInner() {
                 emoji="✦"
                 eyebrow="CO-CREATE"
                 title="好友共创"
-                desc="同一批歌各自打分，链接接力，算出你们的默契度。"
+                desc="给一张专辑打分：总分 + 逐首细评，再和好友比默契。"
                 href="/co"
                 highlight
               />

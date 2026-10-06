@@ -213,6 +213,30 @@ export default function Result() {
         </section>
       )}
 
+      {result.reasons.length > 0 && (
+        <section className="mt-6 rounded-3xl border border-fuchsia-200/20 bg-fuchsia-400/[.07] p-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🔍</span>
+            <p className="text-xs tracking-[.2em] text-fuchsia-200">WHY THIS SCORE</p>
+          </div>
+          <h2 className="mt-2 text-xl font-black">AI 为什么这么判</h2>
+          <div className="mt-4 space-y-3">
+            {result.reasons.map((r) => (
+              <div key={r.dimension} className="rounded-xl bg-black/20 p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm font-bold text-white">{r.dimension}</span>
+                  <span className="text-base font-black text-fuchsia-100">{r.score}</span>
+                </div>
+                <p className="mt-1 text-xs leading-6 text-white/55">{r.text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[10px] leading-5 text-white/30">
+            分数由你的 31 次选择实时计算，每一次「留下 / 送走」都会改变结果。
+          </p>
+        </section>
+      )}
+
       <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
         <p className="text-xs tracking-[.2em] text-fuchsia-200">CHAMPION STORY</p>
         <h2 className="mt-2 text-2xl font-bold">关于《{winner.title}》</h2>

@@ -40,6 +40,21 @@ const shuffle = <T,>(list: T[]): T[] => {
   return arr;
 };
 
+/** 防御层 1：任何进入赛程的歌曲列表都强制按 id 去重，且必须是 2 的幂 */
+function sanitize(list: Song[]): Song[] {
+  const seen = new Set<string>();
+  const out: Song[] = [];
+  for (const s of list) {
+    if (!s?.id || seen.has(s.id)) continue;
+    seen.add(s.id);
+    out.push(s);
+  }
+  // 32 强赛程要求 2 的幂，否则会出现落单 / 配对错乱
+  let size = 32;
+  while (size > out.length) size = size / 2;
+  return out.slice(0, Math.max(size, 2));
+}
+
 export const useGameStore = create<State>()(
   persist(
     (set, get) => ({
@@ -55,7 +70,8 @@ export const useGameStore = create<State>()(
       challenge: undefined,
 
       start: (songs, options) => {
-        const picks = (options?.ordered ? [...songs] : shuffle(songs)).slice(0, 32);
+        const clean = sanitize(songs);
+        const picks = (options?.ordered ? [...clean] : shuffle(clean)).slice(0, clean.length);
         set({
           artist: picks[0]?.artist ?? '',
           songs: picks,
@@ -75,18 +91,27 @@ export const useGameStore = create<State>()(
       choose: (winner) => {
         const s = get();
         const pair = s.queue.slice(s.match, s.match + 2);
-        const loser = pair.find((x) => x.id !== winner.id);
-        if (!loser) return;
+        if (pair.length === 0) return;
 
-        const choices: Choice[] = [
-          ...s.choices,
-          { round: s.round, winnerId: winner.id, loserId: loser.id, timestamp: Date.now() },
-        ];
+        // 防御层 2：无论发生什么，都必须找出一个对手，绝不静默 return
+        let loser = pair.find((x) => x.id !== winner.id);
+        if (!loser) {
+          // 极端情况（同一首被塞进一个对局）：直接让被点的这首晋级
+          loser = pair.find((x) => x !== winner);
+        }
+
+        const choices: Choice[] = loser
+          ? [
+              ...s.choices,
+              { round: s.round, winnerId: winner.id, loserId: loser.id, timestamp: Date.now() },
+            ]
+          : [...s.choices];
+
         const next = [...s.next, winner];
         const end = s.match + 2 >= s.queue.length;
 
         // 最后一场：冠军诞生
-        if (end && next.length === 1) {
+        if (end && next.length <= 1) {
           set({ choices, winner, queue: next, next: [], match: 0 });
           return;
         }
@@ -95,7 +120,7 @@ export const useGameStore = create<State>()(
           set({ queue: next, next: [], match: 0, round: s.round + 1, choices, announcement: true });
           return;
         }
-        set({ next, match: s.match + 2, choices });
+        set({ choices, next, match: s.match + 2 });
       },
 
       reset: () =>
@@ -112,6 +137,22 @@ export const useGameStore = create<State>()(
           challenge: undefined,
         }),
     }),
-    { name: 'i-choose-this-song-session' }
+    {
+      name: 'i-choose-this-song-session',
+      version: 3,
+      // 防御层 3：旧存档（早期曲库含重复条目）一律丢弃
+      migrate: () => ({
+        artist: '',
+        songs: [],
+        queue: [],
+        next: [],
+        match: 0,
+        round: 1,
+        choices: [],
+        winner: undefined,
+        announcement: true,
+        challenge: undefined,
+      }),
+    }
   )
 );

@@ -21,36 +21,36 @@ export default function AlphabetBoard({
   const byId = new Map(songs.map((s) => [s.id, s]));
 
   return (
-    <div className={`grid grid-cols-6 gap-1.5 ${compact ? 'gap-1' : ''}`}>
+    <div className="grid grid-cols-6 gap-1.5">
       {LETTERS.map((letter) => {
         const picked = picks[letter] ? byId.get(picks[letter]) : undefined;
         const count = counts?.[letter] ?? 0;
-        const has = picked || count > 0;
+        const has = Boolean(picked) || count > 0;
 
         return (
           <div
             key={letter}
-            className={`flex flex-col justify-between rounded-lg border px-1 py-1.5 text-center transition ${
+            className={`flex flex-col justify-between overflow-hidden rounded-xl border px-1 py-1.5 text-center transition ${
               picked
-                ? 'border-fuchsia-200/60 bg-gradient-to-br from-fuchsia-500/35 to-violet-600/25 shadow-sm shadow-fuchsia-900/30'
+                ? 'border-fuchsia-200/60 bg-gradient-to-br from-fuchsia-500/45 to-violet-600/30 shadow-md shadow-fuchsia-900/40'
                 : has
                   ? 'border-cyan-200/30 bg-white/[.08]'
                   : 'border-white/8 bg-white/[.02]'
-            } ${compact ? 'min-h-[52px]' : 'min-h-[64px]'}`}
+            } ${compact ? 'min-h-[54px]' : 'min-h-[68px]'}`}
           >
             <span
-              className={`text-sm font-black leading-none ${
+              className={`text-base font-black leading-none ${
                 picked ? 'text-white' : has ? 'text-cyan-100/80' : 'text-white/18'
               }`}
             >
               {letter}
             </span>
             {picked ? (
-              <span className="mt-1 line-clamp-2 text-[8px] font-bold leading-[1.15] text-white/85">
+              <span className="mt-1 line-clamp-2 text-[8px] font-bold leading-[1.15] text-white/90">
                 {picked.title}
               </span>
             ) : (
-              <span className={`mt-1 text-[8px] leading-[1.15] ${has ? 'text-white/35' : 'text-white/12'}`}>
+              <span className={`mt-1 text-[8px] leading-[1.15] ${has ? 'text-white/40' : 'text-white/12'}`}>
                 {has ? `${count} 首` : '—'}
               </span>
             )}

@@ -10,6 +10,7 @@ import RadarChart from '@/components/RadarChart';
 import { useAzStore } from '@/store/useAzStore';
 import { useMounted } from '@/lib/useMounted';
 import { generatePersonality } from '@/lib/personality';
+import { interpretAlphabet } from '@/lib/ai';
 import type { PersonalityResult } from '@/lib/types';
 
 export default function AzResult() {
@@ -89,6 +90,14 @@ export default function AzResult() {
     data ??
     generatePersonality({ artist: artistLabel, songs: library, choices, mode: 'az', letterCount });
 
+  const { story, badges } = interpretAlphabet(picks, library);
+  const pickedSongs = Object.values(picks)
+    .map((id) => library.find((s) => s.id === id))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s));
+  const years = pickedSongs.map((s) => s.year);
+  const yearSpan = years.length ? Math.max(...years) - Math.min(...years) : 0;
+  const albums = new Set(pickedSongs.map((s) => s.album)).size;
+
   return (
     <main className="mx-auto min-h-screen max-w-[430px] px-5 py-8 safe-bottom">
       {toast && (
@@ -135,6 +144,10 @@ export default function AzResult() {
 
         <p className="mt-6 border-l-2 border-cyan-200 pl-4 leading-7 text-white/85">{result.verdict}</p>
 
+        {story && (
+          <p className="mt-4 rounded-xl bg-black/20 p-3 text-[11px] leading-6 text-white/70">{story}</p>
+        )}
+
         <div className="mt-6">
           <RadarChart dimensions={result.dimensions} />
         </div>
@@ -161,8 +174,45 @@ export default function AzResult() {
         </button>
       </div>
 
+      {badges.length > 0 && (
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs tracking-[.2em] text-cyan-200">ACHIEVEMENTS</p>
+          <h2 className="mt-2 text-xl font-black">你的字母表成就</h2>
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
+            {badges.map((b) => (
+              <div
+                key={b.title}
+                className="rounded-2xl border border-fuchsia-200/25 bg-gradient-to-br from-fuchsia-500/15 to-cyan-400/10 p-3"
+              >
+                <p className="text-sm font-black text-white">{b.title}</p>
+                <p className="mt-1 text-[10px] leading-4 text-white/55">{b.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+        <p className="text-xs tracking-[.2em] text-cyan-200">ALPHABET STATS</p>
+        <h2 className="mt-2 text-xl font-black">这张表的形状</h2>
+        <div className="mt-4 grid grid-cols-3 gap-2.5">
+          <div className="rounded-xl bg-black/20 p-3 text-center">
+            <div className="text-xl font-black text-fuchsia-100">{letterCount}</div>
+            <div className="mt-0.5 text-[10px] text-white/50">字母格</div>
+          </div>
+          <div className="rounded-xl bg-black/20 p-3 text-center">
+            <div className="text-xl font-black text-cyan-100">{yearSpan}</div>
+            <div className="mt-0.5 text-[10px] text-white/50">横跨年份</div>
+          </div>
+          <div className="rounded-xl bg-black/20 p-3 text-center">
+            <div className="text-xl font-black text-white">{albums}</div>
+            <div className="mt-0.5 text-[10px] text-white/50">来自专辑</div>
+          </div>
+        </div>
+      </section>
+
       {result.highlights.length > 0 && (
-        <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-5">
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
           <p className="text-xs tracking-[.2em] text-fuchsia-200">ALPHABET INSIGHT</p>
           <h2 className="mt-2 text-xl font-black">填表过程中的你</h2>
           <ul className="mt-4 space-y-3">

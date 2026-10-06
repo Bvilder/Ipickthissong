@@ -15,6 +15,8 @@ export type Song = {
   tags: string[];
   /** 是否为翻唱 / 现场演绎版本 */
   cover?: boolean;
+  /** 官方封面地址；有值时 AlbumCover 会渲染真实封面，否则用程序化生成的封面 */
+  coverUrl?: string;
   /** 歌名首字母索引（A-Z 挑战用，缺失时由 lib/pinyin 计算） */
   letter?: string;
   /** 精确到日的发行日期，接入官方曲库后才有值 */
@@ -40,6 +42,9 @@ export type Dimension = {
   desc: string;
 };
 
+/** 一条维度证据 */
+export type Reason = { dimension: string; score: number; text: string };
+
 /** AI 人格结果 */
 export type PersonalityResult = {
   tags: string[];
@@ -47,6 +52,8 @@ export type PersonalityResult = {
   verdict: string;
   /** 赛程里的关键瞬间，用于结果页和分享卡 */
   highlights: string[];
+  /** 分数是怎么来的（可解释性） */
+  reasons: Reason[];
   /** 结果来源：本地规则引擎 或 大模型 */
   source: 'local' | 'llm';
 };

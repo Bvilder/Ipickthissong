@@ -101,6 +101,7 @@ async function callLLM(prompt: string): Promise<PersonalityResult | null> {
     dimensions: parsed.dimensions.map((d) => ({ name: d.name, score: d.score, desc: d.desc ?? '' })),
     verdict: parsed.verdict,
     highlights: parsed.highlights ?? [],
+    reasons: parsed.reasons ?? [],
     source: 'llm',
   };
 }

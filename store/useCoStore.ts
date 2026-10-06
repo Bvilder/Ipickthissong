@@ -2,24 +2,37 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Song, CoPerson } from '@/lib/types';
+import type { Song } from '@/lib/types';
+import type { AlbumVote } from '@/lib/co';
 
 /**
- * 好友共创状态：对同一批歌逐首打分
+ * 专辑共创评分状态
  */
 type State = {
   artistId: string;
+  album: string;
   songs: Song[];
   name: string;
+  /** 专辑总分 0-10 */
+  albumScore: number;
+  /** 每首曲目分 0-10 */
   scores: number[];
-  index: number;
+  comment: string;
   done: boolean;
   /** 房间里已经打过分的其他人 */
-  people: CoPerson[];
+  people: AlbumVote[];
 
-  setup: (input: { artistId: string; songs: Song[]; name: string; people?: CoPerson[] }) => void;
-  rate: (score: number) => void;
-  back: () => void;
+  setup: (input: {
+    artistId: string;
+    album: string;
+    songs: Song[];
+    name: string;
+    people?: AlbumVote[];
+  }) => void;
+  setAlbumScore: (v: number) => void;
+  setSongScore: (index: number, v: number) => void;
+  setComment: (v: string) => void;
+  finish: () => void;
   reset: () => void;
 };
 
@@ -27,47 +40,64 @@ export const useCoStore = create<State>()(
   persist(
     (set, get) => ({
       artistId: 'gem',
+      album: '',
       songs: [],
       name: '',
+      albumScore: 7,
       scores: [],
-      index: 0,
+      comment: '',
       done: false,
       people: [],
 
-      setup: ({ artistId, songs, name, people = [] }) =>
+      setup: ({ artistId, album, songs, name, people = [] }) =>
         set({
           artistId,
+          album,
           songs,
           name,
           people,
-          scores: new Array(songs.length).fill(0),
-          index: 0,
+          albumScore: 7,
+          scores: new Array(songs.length).fill(7),
+          comment: '',
           done: false,
         }),
 
-      rate: (score) => {
-        const s = get();
-        const scores = [...s.scores];
-        scores[s.index] = score;
-        const nextIndex = s.index + 1;
-        set({
-          scores,
-          index: nextIndex,
-          done: nextIndex >= s.songs.length,
-        });
+      setAlbumScore: (v) => set({ albumScore: v }),
+      setSongScore: (index, v) => {
+        const scores = [...get().scores];
+        scores[index] = v;
+        set({ scores });
       },
-
-      back: () => {
-        const s = get();
-        if (s.index <= 0) return;
-        const scores = [...s.scores];
-        scores[s.index - 1] = 0;
-        set({ index: s.index - 1, scores, done: false });
-      },
+      setComment: (v) => set({ comment: v.slice(0, 60) }),
+      finish: () => set({ done: true }),
 
       reset: () =>
-        set({ artistId: 'gem', songs: [], name: '', scores: [], index: 0, done: false, people: [] }),
+        set({
+          artistId: 'gem',
+          album: '',
+          songs: [],
+          name: '',
+          albumScore: 7,
+          scores: [],
+          comment: '',
+          done: false,
+          people: [],
+        }),
     }),
-    { name: 'i-choose-this-song-co' }
+    {
+      name: 'i-choose-this-song-co',
+      version: 4,
+      migrate: () => ({
+        artistId: 'gem',
+        album: '',
+        songs: [],
+        name: '',
+        albumScore: 7,
+        scores: [],
+        comment: '',
+        done: false,
+        people: [],
+      }),
+    }
   )
 );
