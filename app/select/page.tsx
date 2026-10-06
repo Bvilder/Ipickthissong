@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import ArtistSelector from '@/components/ArtistSelector';
@@ -16,9 +16,28 @@ export default function Select() {
   const songs = useMemo(() => getPopularSongs(), []);
 
   const [selected, setSelected] = useState<string[]>(() => songs.slice(0, TARGET).map((s) => s.id));
+  const [hint, setHint] = useState('');
 
-  const toggle = (id: string) =>
-    setSelected((v) => (v.includes(id) ? v.filter((x) => x !== id) : v.length < TARGET ? [...v, id] : v));
+  useEffect(() => {
+    if (!hint) return;
+    const t = setTimeout(() => setHint(''), 2200);
+    return () => clearTimeout(t);
+  }, [hint]);
+
+  const toggle = (id: string) => {
+    if (selected.includes(id)) {
+      setSelected(selected.filter((x) => x !== id));
+      return;
+    }
+    if (selected.length < TARGET) {
+      setSelected([...selected, id]);
+      return;
+    }
+    // 已选满：自动替换掉最早选中的一首，保证每次点击都有反馈
+    const removed = songs.find((s) => s.id === selected[0]);
+    setSelected([...selected.slice(1), id]);
+    setHint(`已满 32 首，替换掉最早选的《${removed?.title ?? ''}》`);
+  };
 
   const randomize = () =>
     setSelected([...songs].sort(() => Math.random() - 0.5).slice(0, TARGET).map((s) => s.id));
@@ -118,6 +137,10 @@ export default function Select() {
           </span>
           <i className="shine absolute inset-0" />
         </button>
+
+        {hint && (
+          <p className="mt-3 text-center text-xs text-fuchsia-200">{hint}</p>
+        )}
       </div>
     </main>
   );

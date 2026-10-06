@@ -19,6 +19,8 @@ type Body = {
   songs?: string[];
   choices?: Choice[];
   winnerId?: string;
+  mode?: 'bracket32' | 'az';
+  letterCount?: number;
 };
 
 export async function POST(req: Request) {
@@ -31,10 +33,17 @@ export async function POST(req: Request) {
 
   const songs = getSongsByIds(body.songs ?? []);
   const choices = Array.isArray(body.choices) ? body.choices : [];
-  const winnerId = body.winnerId ?? '';
+  const winnerId = body.winnerId || undefined;
 
   // 本地规则引擎：任何情况下都能给出一份与选择强相关的结果
-  const local = generatePersonality({ artist: body.artist ?? '邓紫棋', songs, choices, winnerId });
+  const local = generatePersonality({
+    artist: body.artist ?? '邓紫棋',
+    songs,
+    choices,
+    winnerId,
+    mode: body.mode ?? 'bracket32',
+    letterCount: body.letterCount ?? 0,
+  });
 
   const prompt = buildPrompt(body.artist ?? '邓紫棋', songs.map((s) => `${s.title}（${s.year}｜${s.tags.join('、')}）`), choices, songs.find((s) => s.id === winnerId)?.title ?? '');
 

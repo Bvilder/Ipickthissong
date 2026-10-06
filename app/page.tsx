@@ -72,8 +72,9 @@ function HomeInner() {
                 emoji="A–Z"
                 eyebrow="A TO Z"
                 title="A-Z 挑战"
-                desc="每个字母选一首最爱，26 个答案拼成你的字母表。"
-                soon
+                desc="导入歌单，每个字母选一首最爱，拼成你的音乐字母表。"
+                href="/az"
+                highlight
               />
               <ModeCard
                 emoji="✦"

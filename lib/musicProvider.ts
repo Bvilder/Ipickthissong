@@ -1,5 +1,6 @@
 import base from '@/data/gem.json';
 import type { Song } from './types';
+import { letterOf } from './pinyin';
 
 /**
  * 数据层抽象。
@@ -114,6 +115,7 @@ const officialLinks = (title: string): Song['links'] => [
 const decorate = (song: Song): Song => ({
   ...song,
   ...details[song.title],
+  letter: song.letter ?? letterOf(song.title),
   links: officialLinks(song.title),
 });
 

@@ -26,6 +26,10 @@ export const DIMENSIONS: { key: DimKey; name: string; desc: string }[] = [
 
 const ROUND_NAMES = ['首轮', '16 强', '8 强', '4 强', '决赛'];
 
+/** A-Z 模式没有 32 强概念，轮次用中性说法 */
+const roundLabel = (round: number, mode: 'bracket32' | 'az') =>
+  mode === 'az' ? `第 ${round} 轮` : ROUND_NAMES[clamp(round - 1, 0, 4)];
+
 /** 标签 → 维度权重 */
 const TAG_MAP: Record<string, Partial<Record<DimKey, number>>> = {
   抒情: { melody: 2, emotion: 2 },
@@ -148,15 +152,19 @@ function hash(s: string): number {
 
 export type PersonalityInput = {
   artist: string;
-  /** 32 首歌，顺序即种子序位（下标越小越主流） */
+  /** 参与本局的歌曲，顺序即种子序位（下标越小越主流） */
   songs: Song[];
-  /** 31 次选择 */
+  /** 选择记录 */
   choices: Choice[];
-  winnerId: string;
+  /** 冠军（A-Z 模式没有单一冠军，可省略） */
+  winnerId?: string;
+  mode?: 'bracket32' | 'az';
+  /** A-Z 模式下覆盖的字母数 */
+  letterCount?: number;
 };
 
 export function generatePersonality(input: PersonalityInput): PersonalityResult {
-  const { songs, choices, winnerId } = input;
+  const { songs, choices, winnerId, mode = 'bracket32', letterCount = 0 } = input;
   const byId = new Map(songs.map((s) => [s.id, s]));
   const seedOf = new Map(songs.map((s, i) => [s.id, i]));
   const n = Math.max(songs.length, 2);
@@ -205,7 +213,7 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
     }
   }
 
-  const champion = byId.get(winnerId);
+  const champion = winnerId ? byId.get(winnerId) : undefined;
   const championVector = vector(champion);
 
   // 冠军单独加权：它代表你最后的答案
@@ -249,6 +257,7 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   if (champion?.cover) tags.push('经典重塑者');
   if (top.score - bottom.score <= 12) tags.push('六边形听众');
   if ((scoreOf.get('chorus') ?? 0) >= 88) tags.push('副歌至上主义');
+  if (mode === 'az') tags.push('字母表收藏家');
 
   const uniqueTags = Array.from(new Set(tags)).slice(0, 4);
 
@@ -257,7 +266,7 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
 
   if (upset) {
     highlights.push(
-      `你在${ROUND_NAMES[upset.round - 1]}亲手送走了《${upset.song.title}》，它再也没能回来。`
+      `你在${roundLabel(upset.round, mode)}亲手送走了《${upset.song.title}》，它再也没能回来。`
     );
   }
 
@@ -270,15 +279,28 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   }
   if (darkHorse && (1 - heat(darkHorse.song.id)) > 0.3) {
     highlights.push(
-      `《${darkHorse.song.title}》一路走到${ROUND_NAMES[clamp((depth.get(darkHorse.song.id) ?? 1) - 1, 0, 4)]}，是这局最大的黑马。`
+      `《${darkHorse.song.title}》一路走到${roundLabel(depth.get(darkHorse.song.id) ?? 1, mode)}，是这局最大的黑马。`
     );
   }
 
   const finalChoice = choices.find((c) => c.round === 5);
-  if (finalChoice) {
+  if (mode === 'bracket32' && finalChoice) {
     const runnerUp = byId.get(finalChoice.loserId);
     if (runnerUp && champion) {
       highlights.push(`最后一票，你给了《${champion.title}》，而不是《${runnerUp.title}》。`);
+    }
+  }
+
+  if (mode === 'az') {
+    // 哪个字母下歌最多 = 纠结最久的一格
+    const perLetter = new Map<string, number>();
+    for (const c of choices) {
+      const letter = byId.get(c.winnerId)?.letter;
+      if (letter) perLetter.set(letter, (perLetter.get(letter) ?? 0) + 1);
+    }
+    const hardest = [...perLetter.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (hardest) {
+      highlights.push(`字母 ${hardest[0]} 下有 ${hardest[1] + 1} 首歌，是你纠结最久的一格。`);
     }
   }
 
@@ -289,13 +311,21 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
     ? `${champion.album === '单曲' ? '那首' : `《${champion.album}》里的`}《${champion.title}》`
     : '你的那一首';
 
+  const azTemplates = [
+    `${hi.high}，${lo.low}。你为 ${letterCount} 个字母各留下了一首歌——这不是一份歌单，是你的字母表。`,
+    `从 A 到 Z，你填满了 ${letterCount} 格。空着的那几格不是遗憾，是你还没遇见的歌。${hi.high}。`,
+    `你的字母表长这样：${hi.high}；${lo.low}。${letterCount} 个字母，${letterCount} 首歌，拼出此刻的你。`,
+  ];
+
   const templates = [
     `${hi.high}，${lo.low}。31 次二选一之后，最后留下的是${championLine}——它不是你最熟悉的，但一定是最像你的。`,
     `别人用歌单描述品味，你用淘汰赛描述自己：${DIMENSIONS.find((d) => d.key === top.key)?.name} ${top.score} 分，${DIMENSIONS.find((d) => d.key === bottom.key)?.name} ${bottom.score} 分。终点是${championLine}。`,
     `你的选择很一致：${hi.high}。所以${championLine}从 32 首里活到最后，并不意外。只是${lo.low}。`,
     `把 31 次选择连成一条线，会看到一个人：${hi.high}；${lo.low}。这条线的尽头，站着${championLine}。`,
   ];
-  const verdict = templates[hash(winnerId + choices.length) % templates.length];
+
+  const pool = mode === 'az' ? azTemplates : templates;
+  const verdict = pool[hash(`${winnerId ?? 'az'}${choices.length}`) % pool.length];
 
   return {
     tags: uniqueTags,

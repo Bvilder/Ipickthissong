@@ -15,6 +15,8 @@ export type Song = {
   tags: string[];
   /** 是否为翻唱 / 现场演绎版本 */
   cover?: boolean;
+  /** 歌名首字母索引（A-Z 挑战用，缺失时由 lib/pinyin 计算） */
+  letter?: string;
   /** 精确到日的发行日期，接入官方曲库后才有值 */
   releaseDate?: string;
   /** 歌曲背后的故事文案 */
