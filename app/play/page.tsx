@@ -29,16 +29,20 @@ export default function Play() {
     r.replace(challenge ? `/challenge?c=${challenge}` : '/result');
   }, [winner, r, challenge]);
 
+  // 防御层 4：万一赛程里出现落单或重复配对，自动推进，绝不卡死
+  // 注意：所有 hook 必须写在任何提前 return 之前
+  useEffect(() => {
+    if (!mounted || announcement) return;
+    const x = queue[match];
+    const y = queue[match + 1];
+    if (!x) return;
+    if (!y || x.id === y.id) choose(x);
+  }, [mounted, announcement, queue, match, choose]);
+
   if (!mounted) return <main className="grain min-h-screen" />;
 
   const a = queue[match];
   const b = queue[match + 1];
-
-  // 防御层 4：万一赛程里出现落单或重复配对，自动推进，绝不卡死
-  useEffect(() => {
-    if (announcement || !a) return;
-    if (!b || a.id === b.id) choose(a);
-  }, [announcement, a, b, choose]);
 
   if (!a || !b) {
     return (

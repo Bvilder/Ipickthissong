@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 /**
- * zustand persist 会在客户端恢复 localStorage 里的数据，
- * 与服务端渲染结果不一致。用这个 hook 做一次水合守卫，避免 hydration mismatch。
+ * 客户端水合标记。
+ *
+ * zustand persist 会在客户端恢复 localStorage 的数据，与服务端渲染结果不一致，
+ * 用它做一次守卫即可避免 hydration mismatch，且不会触发额外的级联渲染。
  */
-export function useMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted;
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+export function useMounted(): boolean {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

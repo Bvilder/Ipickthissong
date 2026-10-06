@@ -51,7 +51,7 @@ export default function Result() {
     return () => {
       alive = false;
     };
-  }, [winner, songs, choices]);
+  }, [winner, songs, choices, artistLabel]);
 
   const share = useCallback(async () => {
     const el = document.getElementById('share-card');
@@ -96,7 +96,7 @@ export default function Result() {
       input.remove();
       setToast('挑战链接已复制，发给朋友一起选');
     }
-  }, [winner, songs, choices, data]);
+  }, [winner, songs, choices, data, artistLabel]);
 
   if (!mounted) return <main className="min-h-screen" />;
 

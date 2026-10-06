@@ -52,7 +52,7 @@ export default function AzResult() {
     return () => {
       alive = false;
     };
-  }, [library, choices, picks, letterCount]);
+  }, [library, choices, picks, letterCount, artistLabel]);
 
   const share = useCallback(async () => {
     const el = document.getElementById('az-share-card');

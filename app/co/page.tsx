@@ -30,7 +30,8 @@ function CoHomeInner() {
   if (!mounted) return <main className="min-h-screen" />;
 
   const goRate = (albumName: string, songs: Song[], people: AlbumVote[]) => {
-    const finalName = name.trim() || `听众${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`;
+    // 不填昵称时按顺序自动命名，避免在渲染期调用随机数
+    const finalName = name.trim() || `听众${people.length + 1}`;
     setup({
       artistId: room?.artistId ?? artistId,
       album: albumName,
