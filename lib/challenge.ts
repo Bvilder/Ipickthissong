@@ -1,40 +1,21 @@
 import type { ChallengePayload, Choice, Matchup, Song } from './types';
+import { decodeJson, encodeJson } from './base64';
 
 /**
  * 好友挑战：编码 / 解码 / 对比
  * 链接里带的是「整局赛程」，不依赖后端存储，刷新和转发都不会失效。
  */
 
-function toBase64Url(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let bin = '';
-  bytes.forEach((b) => {
-    bin += String.fromCharCode(b);
-  });
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function fromBase64Url(code: string): string {
-  const b64 = code.replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(b64);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
 export function encodeChallenge(payload: ChallengePayload): string {
-  return toBase64Url(JSON.stringify(payload));
+  return encodeJson(payload);
 }
 
 export function decodeChallenge(code: string | null | undefined): ChallengePayload | null {
-  if (!code) return null;
-  try {
-    const data = JSON.parse(fromBase64Url(code)) as ChallengePayload;
-    if (data?.v !== 1 || !Array.isArray(data.songs) || !Array.isArray(data.picks)) return null;
-    if (data.songs.length !== 32 || data.picks.length !== 31) return null;
-    return data;
-  } catch {
-    return null;
-  }
+  const data = decodeJson<ChallengePayload>(code);
+  if (!data || data.v !== 1) return null;
+  if (!Array.isArray(data.songs) || !Array.isArray(data.picks)) return null;
+  if (data.songs.length !== 32 || data.picks.length !== 31) return null;
+  return data;
 }
 
 /** 把选择记录转成 picks（每场胜者在歌曲数组中的下标） */

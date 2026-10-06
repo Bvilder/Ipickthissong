@@ -91,8 +91,9 @@ function HomeInner() {
                 emoji="✦"
                 eyebrow="CO-CREATE"
                 title="好友共创"
-                desc="多人给同一批歌评分，算出默契度与分歧曲目。"
-                soon
+                desc="同一批歌各自打分，链接接力，算出你们的默契度。"
+                href="/co"
+                highlight
               />
             </div>
           </div>

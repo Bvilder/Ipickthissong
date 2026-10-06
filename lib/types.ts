@@ -76,6 +76,38 @@ export type ChallengePayload = {
   tags: string[];
 };
 
+/** 共创房间里一个人的评分 */
+export type CoPerson = {
+  /** 昵称 */
+  n: string;
+  /** 与 songs 等长的评分，1-5 */
+  s: number[];
+};
+
+/** 好友共创房间（链接里接力传递） */
+export type CoRoomPayload = {
+  v: 1;
+  artistId: string;
+  /** 共创歌单（默认 12 首） */
+  songs: string[];
+  people: CoPerson[];
+};
+
+/** 共创结果 */
+export type CoResult = {
+  /** 默契度 0-100，只有一人时为 undefined */
+  harmony?: number;
+  level?: string;
+  /** 按平均分排序的歌曲（含分歧度） */
+  ranking: { songId: string; avg: number; spread: number }[];
+  /** 全员高分共鸣曲 */
+  resonance: string[];
+  /** 分歧最大的一首 */
+  biggestGap?: { songId: string; spread: number; high: string; low: string };
+  /** 每个人的定位 */
+  roles: { name: string; role: string; avg: number }[];
+};
+
 /** 两人对比结果 */
 export type Matchup = {
   /** 默契度 0-100 */
