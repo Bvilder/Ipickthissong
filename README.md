@@ -58,7 +58,19 @@ LLM_MODEL=hunyuan-turbo
 
 好友打开后还原出**完全相同的 32 首歌与对阵顺序**，打完自动计算默契度：冠军一致性（40）+ 四强重合（25）+ 八强重合（20）+ 晋级路径差异（15），并给出共同四强与分歧最大的一首歌。不依赖后端存储。
 
-## 数据结构
+## 歌手与曲库
+
+| 歌手 | 曲目数 | 覆盖字母 |
+| --- | --- | --- |
+| 邓紫棋 G.E.M. | 45 | 19 |
+| 周杰伦 Jay | 54 | 19 |
+
+曲库为演示用预置元数据，接入 QQ 音乐开放平台后替换为官方数据。新增歌手只需：
+
+1. 加一份 `data/xxx.json`
+2. 在 `lib/musicProvider.ts` 的 `ARTISTS` 与 `LIBRARIES` 里注册
+
+上层页面与组件无需改动。
 
 - `lib/types.ts` — Song / Choice / PersonalityResult / ChallengePayload / Matchup
 - `lib/musicProvider.ts` — **数据层唯一出口**，未来替换成 QQ 音乐开放平台 API 只需改这里

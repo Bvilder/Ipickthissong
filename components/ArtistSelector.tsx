@@ -26,7 +26,7 @@ export default function ArtistSelector({
             } ${disabled ? 'opacity-40' : ''}`}
           >
             <p className={`text-sm font-black ${active ? 'text-white' : 'text-white/60'}`}>{a.name}</p>
-            <p className="mt-0.5 text-[10px] leading-4 text-white/40">{a.subtitle}</p>
+            <p className="mt-0.5 text-[10px] leading-4 text-white/40">{a.short}</p>
           </button>
         );
       })}

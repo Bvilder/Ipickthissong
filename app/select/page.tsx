@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import ArtistSelector from '@/components/ArtistSelector';
-import { getPopularSongs } from '@/lib/musicProvider';
+import { getPopularSongs, DEFAULT_ARTIST } from '@/lib/musicProvider';
 import { useGameStore } from '@/store/useGameStore';
 
 const TARGET = 32;
@@ -13,10 +13,18 @@ const TARGET = 32;
 export default function Select() {
   const router = useRouter();
   const start = useGameStore((s) => s.start);
-  const songs = useMemo(() => getPopularSongs(), []);
+  const [artistId, setArtistId] = useState(DEFAULT_ARTIST);
+  const songs = useMemo(() => getPopularSongs(artistId), [artistId]);
 
   const [selected, setSelected] = useState<string[]>(() => songs.slice(0, TARGET).map((s) => s.id));
   const [hint, setHint] = useState('');
+
+  // 换歌手 = 换曲库，重选一次
+  const switchArtist = (id: string) => {
+    setArtistId(id);
+    setSelected(getPopularSongs(id).slice(0, TARGET).map((s) => s.id));
+    setHint('');
+  };
 
   useEffect(() => {
     if (!hint) return;
@@ -67,7 +75,7 @@ export default function Select() {
         </p>
 
         <div className="mt-5">
-          <ArtistSelector value="gem" onChange={() => {}} />
+          <ArtistSelector value={artistId} onChange={switchArtist} />
         </div>
 
         <section className="mt-6 rounded-[1.8rem] border border-white/12 bg-white/[.055] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm">

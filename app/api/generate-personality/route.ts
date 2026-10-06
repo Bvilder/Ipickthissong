@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   // 本地规则引擎：任何情况下都能给出一份与选择强相关的结果
   const local = generatePersonality({
-    artist: body.artist ?? '邓紫棋',
+    artist: body.artist ?? '未知歌手',
     songs,
     choices,
     winnerId,
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     letterCount: body.letterCount ?? 0,
   });
 
-  const prompt = buildPrompt(body.artist ?? '邓紫棋', songs.map((s) => `${s.title}（${s.year}｜${s.tags.join('、')}）`), choices, songs.find((s) => s.id === winnerId)?.title ?? '');
+  const prompt = buildPrompt(body.artist ?? '这位歌手', songs.map((s) => `${s.title}（${s.year}｜${s.tags.join('、')}）`), choices, songs.find((s) => s.id === winnerId)?.title ?? '');
 
   try {
     const llm = await callLLM(prompt);

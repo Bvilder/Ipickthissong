@@ -12,6 +12,8 @@ type StartOptions = {
 };
 
 type State = {
+  /** 本局歌手名 */
+  artist: string;
   songs: Song[];
   queue: Song[];
   next: Song[];
@@ -41,6 +43,7 @@ const shuffle = <T,>(list: T[]): T[] => {
 export const useGameStore = create<State>()(
   persist(
     (set, get) => ({
+      artist: '',
       songs: [],
       queue: [],
       next: [],
@@ -54,6 +57,7 @@ export const useGameStore = create<State>()(
       start: (songs, options) => {
         const picks = (options?.ordered ? [...songs] : shuffle(songs)).slice(0, 32);
         set({
+          artist: picks[0]?.artist ?? '',
           songs: picks,
           queue: picks,
           next: [],
@@ -96,6 +100,7 @@ export const useGameStore = create<State>()(
 
       reset: () =>
         set({
+          artist: '',
           songs: [],
           queue: [],
           next: [],

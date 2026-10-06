@@ -5,22 +5,34 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import AlphabetBoard from '@/components/AlphabetBoard';
+import ArtistSelector from '@/components/ArtistSelector';
 import { useLibraryStore } from '@/store/useLibraryStore';
 import { useAzStore } from '@/store/useAzStore';
 import { useMounted } from '@/lib/useMounted';
 import { groupByLetter } from '@/lib/az';
+import { artistName } from '@/lib/musicProvider';
 
 export default function AzHome() {
   const router = useRouter();
   const mounted = useMounted();
 
   const library = useLibraryStore((s) => s.songs);
+  const libraryArtist = useLibraryStore((s) => s.artistId);
   const importDemo = useLibraryStore((s) => s.importDemo);
+  const clearLibrary = useLibraryStore((s) => s.clear);
   const azStart = useAzStore((s) => s.start);
+  const azReset = useAzStore((s) => s.reset);
   const azFinished = useAzStore((s) => s.finished);
   const azPicks = useAzStore((s) => s.picks);
 
   const grouped = useMemo(() => groupByLetter(library), [library]);
+
+  // 换歌手 = 换歌单，进度清空
+  const switchArtist = (id: string) => {
+    azReset();
+    clearLibrary();
+    importDemo(id);
+  };
 
   if (!mounted) return <main className="min-h-screen" />;
 
@@ -38,9 +50,14 @@ export default function AzHome() {
           <p className="mt-4 text-sm leading-7 text-white/60">
             A-Z 挑战从你自己的歌单出题：按歌名首字母分成 26 格，每格一屏列出这个字母下的所有歌，选一首就进下一格，最后拼成你的音乐字母表。
           </p>
+          <div className="mt-7">
+            <p className="mb-2 text-[10px] font-bold tracking-[.2em] text-white/40">选择歌手</p>
+            <ArtistSelector value={libraryArtist} onChange={switchArtist} />
+          </div>
+
           <button
-            onClick={importDemo}
-            className="mt-8 w-full rounded-2xl bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-violet-500 py-4 font-bold shadow-xl shadow-fuchsia-950/40 active:scale-[.99]"
+            onClick={() => importDemo()}
+            className="mt-5 w-full rounded-2xl bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-violet-500 py-4 font-bold shadow-xl shadow-fuchsia-950/40 active:scale-[.99]"
           >
             导入演示歌单 →
           </button>
@@ -75,21 +92,27 @@ export default function AzHome() {
           每个字母留下一首最爱，26 格填满，就是此刻的你。
         </p>
 
+        <div className="mt-5">
+          <ArtistSelector value={libraryArtist} onChange={switchArtist} />
+        </div>
+
         <motion.section
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-6 rounded-[1.8rem] border border-white/12 bg-white/[.055] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm"
+          className="mt-4 rounded-[1.8rem] border border-white/12 bg-white/[.055] p-5 shadow-2xl shadow-black/20 backdrop-blur-sm"
         >
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-bold tracking-[.2em] text-fuchsia-200">MY LIBRARY</p>
-              <h2 className="mt-1 text-lg font-black">已导入 {library.length} 首</h2>
+              <h2 className="mt-1 text-lg font-black">
+                {artistName(libraryArtist)} · {library.length} 首
+              </h2>
               <p className="mt-1 text-xs text-white/50">
                 覆盖 {grouped.letters.filter((l) => l !== '#').length} 个字母 · 需要填 {grouped.letters.length} 格
               </p>
             </div>
             <button
-              onClick={importDemo}
+              onClick={() => importDemo()}
               className="shrink-0 rounded-xl border border-white/12 bg-white/5 px-3 py-2 text-xs text-white/70"
             >
               重新导入

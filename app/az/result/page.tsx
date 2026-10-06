@@ -16,6 +16,7 @@ export default function AzResult() {
   const router = useRouter();
   const mounted = useMounted();
   const { picks, choices, library, letters, reset } = useAzStore();
+  const artistLabel = library[0]?.artist ?? '未知歌手';
 
   const [data, setData] = useState<PersonalityResult | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function AzResult() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        artist: '邓紫棋',
+        artist: artistLabel,
         songs: library.map((s) => s.id),
         choices,
         mode: 'az',
@@ -86,7 +87,7 @@ export default function AzResult() {
 
   const result =
     data ??
-    generatePersonality({ artist: '邓紫棋', songs: library, choices, mode: 'az', letterCount });
+    generatePersonality({ artist: artistLabel, songs: library, choices, mode: 'az', letterCount });
 
   return (
     <main className="mx-auto min-h-screen max-w-[430px] px-5 py-8 safe-bottom">

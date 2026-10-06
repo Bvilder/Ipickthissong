@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { motion } from 'framer-motion';
 import ModeCard from '@/components/ModeCard';
+import { ARTISTS } from '@/lib/musicProvider';
 
 function HomeInner() {
   const router = useRouter();
@@ -34,6 +35,16 @@ function HomeInner() {
           <p className="mt-5 max-w-[280px] text-sm leading-6 text-white/60">
             不是测评，是一次只属于你的音乐淘汰赛。31 次二选一之后，你会看见自己的音乐人格。
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {ARTISTS.filter((a) => a.available).map((a) => (
+              <span
+                key={a.id}
+                className="rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] text-white/65"
+              >
+                {a.name} 曲库已上线
+              </span>
+            ))}
+          </div>
         </motion.header>
 
         {code && (

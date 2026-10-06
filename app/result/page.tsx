@@ -16,7 +16,8 @@ import type { ChallengePayload, PersonalityResult } from '@/lib/types';
 export default function Result() {
   const router = useRouter();
   const mounted = useMounted();
-  const { winner, reset, songs, choices, challenge } = useGameStore();
+  const { winner, reset, songs, choices, challenge, artist } = useGameStore();
+  const artistLabel = artist || '未知歌手';
 
   const [data, setData] = useState<PersonalityResult | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -27,13 +28,13 @@ export default function Result() {
     if (!winner || !songs.length) return;
     let alive = true;
 
-    const local = generatePersonality({ artist: '邓紫棋', songs, choices, winnerId: winner.id });
+    const local = generatePersonality({ artist: artistLabel, songs, choices, winnerId: winner.id });
 
     fetch('/api/generate-personality', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        artist: '邓紫棋',
+        artist: artistLabel,
         songs: songs.map((s) => s.id),
         choices,
         winnerId: winner.id,
@@ -76,7 +77,7 @@ export default function Result() {
     if (!winner) return;
     const payload: ChallengePayload = {
       v: 1,
-      artist: '邓紫棋',
+      artist: artistLabel,
       songs: songs.map((s) => s.id),
       picks: choicesToPicks(songs, choices),
       winner: songs.findIndex((s) => s.id === winner.id),
@@ -116,7 +117,7 @@ export default function Result() {
     );
   }
 
-  const result = data ?? generatePersonality({ artist: '邓紫棋', songs, choices, winnerId: winner.id });
+  const result = data ?? generatePersonality({ artist: artistLabel, songs, choices, winnerId: winner.id });
   const maxDim = [...result.dimensions].sort((a, b) => b.score - a.score)[0];
 
   return (
@@ -141,7 +142,7 @@ export default function Result() {
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-white/65">你的邓紫棋冠军单曲</p>
+            <p className="text-sm text-white/65">你的{artistLabel}冠军单曲</p>
             <h1 className="mt-2 text-4xl font-black leading-tight">{winner.title}</h1>
             <p className="mt-2 text-white/65">
               {winner.album} · {winner.year} 年
@@ -226,7 +227,8 @@ export default function Result() {
           </div>
         </dl>
         <p className="mt-4 text-sm leading-7 text-white/70">
-          {winner.story || '这首歌在邓紫棋的作品谱系里留下了独特的情绪坐标。它被不同的人听见，也在不同的时刻成为各自的答案。'}
+          {winner.story ||
+            `这首歌在${artistLabel}的作品谱系里留下了独特的情绪坐标。它被不同的人听见，也在不同的时刻成为各自的答案。`}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {winner.links?.map((x) => (

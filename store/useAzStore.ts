@@ -13,6 +13,8 @@ import { groupByLetter } from '@/lib/az';
  */
 
 type State = {
+  /** 本次使用的歌手 id */
+  artistId: string;
   library: Song[];
   letters: string[];
   groups: Record<string, Song[]>;
@@ -33,6 +35,7 @@ type State = {
 export const useAzStore = create<State>()(
   persist(
     (set, get) => ({
+      artistId: 'gem',
       library: [],
       letters: [],
       groups: {},
@@ -44,6 +47,7 @@ export const useAzStore = create<State>()(
       start: (library) => {
         const { letters, groups } = groupByLetter(library);
         set({
+          artistId: library[0]?.artist === '周杰伦' ? 'jay' : 'gem',
           library,
           letters,
           groups,
@@ -76,13 +80,31 @@ export const useAzStore = create<State>()(
       },
 
       reset: () =>
-        set({ library: [], letters: [], groups: {}, index: 0, picks: {}, choices: [], finished: false }),
+        set({
+          artistId: 'gem',
+          library: [],
+          letters: [],
+          groups: {},
+          index: 0,
+          picks: {},
+          choices: [],
+          finished: false,
+        }),
     }),
     {
       name: 'i-choose-this-song-az',
-      version: 2,
-      // 旧版状态（逐对淘汰）直接丢弃，避免残留数据导致异常
-      migrate: () => ({ library: [], letters: [], groups: {}, index: 0, picks: {}, choices: [], finished: false }),
+      version: 3,
+      // 旧版状态直接丢弃，避免残留数据导致异常
+      migrate: () => ({
+        artistId: 'gem',
+        library: [],
+        letters: [],
+        groups: {},
+        index: 0,
+        picks: {},
+        choices: [],
+        finished: false,
+      }),
     }
   )
 );
