@@ -123,7 +123,12 @@ let cache: Song[] | null = null;
 
 /** 当前歌手的完整曲库（按热度大致排序，越靠前越为主流） */
 export function getSongsByArtist(): Song[] {
-  if (!cache) cache = (base as Song[]).map(decorate);
+  if (!cache) {
+    const seen = new Set<string>();
+    cache = (base as Song[])
+      .filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))
+      .map(decorate);
+  }
   return cache;
 }
 

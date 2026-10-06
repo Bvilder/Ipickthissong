@@ -11,15 +11,18 @@ export type AzGroups = {
   groups: Record<string, Song[]>;
   /** 每个字母的歌曲数 */
   counts: Record<string, number>;
-  /** 需要用户做决定的场次（组内歌曲数 - 1） */
-  totalMatches: number;
 };
 
 export function groupByLetter(songs: Song[]): AzGroups {
   const groups: Record<string, Song[]> = {};
   for (const letter of LETTERS) groups[letter] = [];
 
+  const seen = new Set<string>();
   for (const song of songs) {
+    // 防御：同一首歌绝不重复进入分组，否则会出现「两首一样的歌」
+    if (seen.has(song.id)) continue;
+    seen.add(song.id);
+
     const letter = letterOf(song.title, song.letter);
     groups[letter] = groups[letter] ?? [];
     groups[letter].push(song);
@@ -27,16 +30,9 @@ export function groupByLetter(songs: Song[]): AzGroups {
 
   const letters = LETTERS.filter((l) => groups[l].length > 0);
   const counts: Record<string, number> = {};
-  let totalMatches = 0;
-  for (const l of letters) {
-    counts[l] = groups[l].length;
-    totalMatches += Math.max(0, groups[l].length - 1);
-  }
+  for (const l of letters) counts[l] = groups[l].length;
 
-  return { letters, groups, counts, totalMatches };
+  return { letters, groups, counts };
 }
 
 export const letterLabel = (letter: string) => (letter === '#' ? '#' : letter);
-
-/** 组内需要几轮（用于展示与权重） */
-export const roundsOf = (count: number) => Math.max(1, Math.ceil(Math.log2(Math.max(count, 2))));

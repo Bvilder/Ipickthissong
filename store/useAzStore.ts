@@ -3,41 +3,32 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Song, Choice } from '@/lib/types';
-import { groupByLetter, roundsOf } from '@/lib/az';
+import { groupByLetter } from '@/lib/az';
 
 /**
  * A-Z 挑战状态机
  *
- * 逐个字母推进：组内有多首就打小组淘汰赛，只有一首就直接认领。
- * 全部字母走完 = 你的 A-Z 音乐字母表完成。
+ * 每个字母一屏：直接列出该字母下的所有歌，选一首就进下一格。
+ * 被淘汰的其他歌会记成 Choice，供人格引擎使用。
  */
 
 type State = {
   library: Song[];
   letters: string[];
   groups: Record<string, Song[]>;
-  totalMatches: number;
-
   index: number;
-  queue: Song[];
-  next: Song[];
-  match: number;
-
   /** letter -> songId */
   picks: Record<string, string>;
   choices: Choice[];
   finished: boolean;
 
   start: (library: Song[]) => void;
-  choose: (song: Song) => void;
-  /** 组内只剩一首时的认领 */
-  claim: () => void;
-  /** 轮空自动晋级 */
-  bye: () => void;
+  /** 选定当前字母的一首歌 */
+  pick: (song: Song) => void;
+  /** 这一格留空 */
+  skip: () => void;
   reset: () => void;
 };
-
-const emptyGroupState = () => ({ queue: [] as Song[], next: [] as Song[], match: 0 });
 
 export const useAzStore = create<State>()(
   persist(
@@ -45,134 +36,66 @@ export const useAzStore = create<State>()(
       library: [],
       letters: [],
       groups: {},
-      totalMatches: 0,
       index: 0,
-      queue: [],
-      next: [],
-      match: 0,
       picks: {},
       choices: [],
       finished: false,
 
       start: (library) => {
-        const { letters, groups, totalMatches } = groupByLetter(library);
-        const first = letters[0];
+        const { letters, groups } = groupByLetter(library);
         set({
           library,
           letters,
           groups,
-          totalMatches,
           index: 0,
-          queue: first ? groups[first] : [],
-          next: [],
-          match: 0,
           picks: {},
           choices: [],
-          finished: !first,
+          finished: letters.length === 0,
         });
       },
 
-      choose: (winner) => {
+      pick: (song) => {
         const s = get();
-        const pair = s.queue.slice(s.match, s.match + 2);
-        const loser = pair.find((x) => x.id !== winner.id);
-        if (!loser) return;
-
         const letter = s.letters[s.index];
-        const choices = [
-          ...s.choices,
-          {
-            round: roundsOf(s.queue.length),
-            winnerId: winner.id,
-            loserId: loser.id,
-            timestamp: Date.now(),
-          },
-        ];
+        if (!letter) return;
 
-        const next = [...s.next, winner];
-        const end = s.match + 2 >= s.queue.length;
-
-        if (end) {
-          // 奇数时最后一位轮空，直接晋级
-          for (let i = s.match + 2; i < s.queue.length; i++) next.push(s.queue[i]);
+        const candidates = s.groups[letter] ?? [];
+        const choices: Choice[] = [...s.choices];
+        const now = Date.now();
+        for (const other of candidates) {
+          if (other.id === song.id) continue;
+          choices.push({ round: 1, winnerId: song.id, loserId: other.id, timestamp: now });
         }
 
-        if (end && next.length === 1) {
-          commit(set, get, letter, next[0].id, choices);
-          return;
-        }
-        if (end) {
-          set({ choices, queue: next, next: [], match: 0 });
-          return;
-        }
-        set({ choices, next, match: s.match + 2 });
+        advance(set, get, { ...s.picks, [letter]: song.id }, choices);
       },
 
-      claim: () => {
+      skip: () => {
         const s = get();
-        const only = s.queue[0];
-        if (!only || s.queue.length !== 1) return;
-        const letter = s.letters[s.index];
-        commit(set, get, letter, only.id, s.choices);
-      },
-
-      bye: () => {
-        const s = get();
-        if (s.match >= s.queue.length) return;
-        const song = s.queue[s.match];
-        const next = [...s.next, song];
-        const end = s.match + 1 >= s.queue.length;
-        const letter = s.letters[s.index];
-
-        if (end && next.length === 1) {
-          commit(set, get, letter, song.id, s.choices);
-          return;
-        }
-        if (end) {
-          set({ queue: next, next: [], match: 0 });
-          return;
-        }
-        set({ next, match: s.match + 1 });
+        advance(set, get, s.picks, s.choices);
       },
 
       reset: () =>
-        set({
-          library: [],
-          letters: [],
-          groups: {},
-          totalMatches: 0,
-          index: 0,
-          picks: {},
-          choices: [],
-          finished: false,
-          ...emptyGroupState(),
-        }),
+        set({ library: [], letters: [], groups: {}, index: 0, picks: {}, choices: [], finished: false }),
     }),
-    { name: 'i-choose-this-song-az' }
+    {
+      name: 'i-choose-this-song-az',
+      version: 2,
+      // 旧版状态（逐对淘汰）直接丢弃，避免残留数据导致异常
+      migrate: () => ({ library: [], letters: [], groups: {}, index: 0, picks: {}, choices: [], finished: false }),
+    }
   )
 );
 
 type Setter = (partial: Partial<State>) => void;
 type Getter = () => State;
 
-/** 当前字母决出后：写入 picks，并推进到下一个字母 */
-function commit(set: Setter, get: Getter, letter: string, songId: string, choices: Choice[]) {
+function advance(set: Setter, get: Getter, picks: Record<string, string>, choices: Choice[]) {
   const s = get();
-  const picks = { ...s.picks, [letter]: songId };
   const nextIndex = s.index + 1;
-
   if (nextIndex >= s.letters.length) {
-    set({ picks, choices, finished: true, ...emptyGroupState() });
+    set({ picks, choices, finished: true });
     return;
   }
-
-  const nextLetter = s.letters[nextIndex];
-  set({
-    picks,
-    choices,
-    index: nextIndex,
-    queue: s.groups[nextLetter] ?? [],
-    next: [],
-    match: 0,
-  });
+  set({ picks, choices, index: nextIndex });
 }

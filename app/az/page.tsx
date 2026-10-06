@@ -36,7 +36,7 @@ export default function AzHome() {
           <p className="mt-8 text-[11px] font-bold tracking-[.25em] text-cyan-200">A-Z CHALLENGE</p>
           <h1 className="mt-2 text-4xl font-black leading-tight">先导入你的歌单</h1>
           <p className="mt-4 text-sm leading-7 text-white/60">
-            A-Z 挑战从你自己的歌单出题：按歌名首字母分成 26 格，每个字母选出你最爱的那一首，最后拼成你的音乐字母表。
+            A-Z 挑战从你自己的歌单出题：按歌名首字母分成 26 格，每格一屏列出这个字母下的所有歌，选一首就进下一格，最后拼成你的音乐字母表。
           </p>
           <button
             onClick={importDemo}
@@ -85,7 +85,7 @@ export default function AzHome() {
               <p className="text-[10px] font-bold tracking-[.2em] text-fuchsia-200">MY LIBRARY</p>
               <h2 className="mt-1 text-lg font-black">已导入 {library.length} 首</h2>
               <p className="mt-1 text-xs text-white/50">
-                覆盖 {grouped.letters.filter((l) => l !== '#').length} 个字母 · 共 {grouped.totalMatches} 次选择
+                覆盖 {grouped.letters.filter((l) => l !== '#').length} 个字母 · 需要填 {grouped.letters.length} 格
               </p>
             </div>
             <button

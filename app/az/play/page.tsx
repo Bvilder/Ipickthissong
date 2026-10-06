@@ -3,25 +3,19 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import SongCard from '@/components/SongCard';
+import { motion } from 'framer-motion';
+import SongTile from '@/components/SongTile';
 import { useAzStore } from '@/store/useAzStore';
 import { useMounted } from '@/lib/useMounted';
 
 export default function AzPlay() {
   const router = useRouter();
   const mounted = useMounted();
-  const { letters, index, queue, match, picks, finished, choose, claim, bye } = useAzStore();
+  const { letters, groups, index, picks, finished, pick, skip } = useAzStore();
 
   useEffect(() => {
     if (finished) router.replace('/az/result');
   }, [finished, router]);
-
-  // 组内为奇数时，落单的那首自动轮空晋级
-  useEffect(() => {
-    if (finished || queue.length <= 1) return;
-    if (match < queue.length && !queue[match + 1]) bye();
-  }, [finished, queue, match, bye]);
 
   if (!mounted) return <main className="min-h-screen" />;
 
@@ -39,9 +33,8 @@ export default function AzPlay() {
   }
 
   const letter = letters[index];
-  const a = queue[match];
-  const b = queue[match + 1];
-  const progress = (index / letters.length) * 100;
+  const candidates = groups[letter] ?? [];
+  const progress = (Object.keys(picks).length / letters.length) * 100;
 
   return (
     <main className="grain relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-5 py-7 safe-bottom">
@@ -65,56 +58,32 @@ export default function AzPlay() {
         </div>
 
         <div className="mt-7 flex items-end gap-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/20 bg-gradient-to-br from-fuchsia-500/30 to-cyan-400/20 text-5xl font-black shadow-xl">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-white/20 bg-gradient-to-br from-fuchsia-500/30 to-cyan-400/20 text-5xl font-black shadow-xl">
             {letter}
           </div>
           <div className="pb-1">
             <p className="text-[10px] font-bold tracking-[.25em] text-cyan-200">LETTER {letter}</p>
-            <h1 className="mt-1.5 text-2xl font-black leading-tight">
-              {queue.length === 1 ? '这一格只有一首' : '这一格你更爱哪首？'}
-            </h1>
+            <h1 className="mt-1.5 text-2xl font-black leading-tight">这一格留哪首？</h1>
             <p className="mt-1 text-xs text-white/50">
-              本格共 {queue.length} 首 · 已填 {Object.keys(picks).length} 格
+              {candidates.length} 首选 1 首 · 已填 {Object.keys(picks).length} 格
             </p>
           </div>
         </div>
 
-        {queue.length === 1 ? (
-          <motion.div
-            key={`claim-${letter}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-7"
-          >
-            <SongCard song={queue[0]} onClick={claim} index={0} />
-            <button
-              onClick={claim}
-              className="mt-4 w-full rounded-2xl bg-white py-4 font-bold text-slate-900 shadow-xl shadow-white/10"
-            >
-              就是它，填进 {letter} 格 →
-            </button>
-          </motion.div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${letter}-${a?.id}-${b?.id}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              className="mt-7 space-y-3"
-            >
-              {a && <SongCard song={a} onClick={() => choose(a)} index={0} />}
-              {a && b && (
-                <div className="flex items-center gap-3 py-1">
-                  <i className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] font-black tracking-[.3em] text-white/30">OR</span>
-                  <i className="h-px flex-1 bg-white/10" />
-                </div>
-              )}
-              {b && <SongCard song={b} onClick={() => choose(b)} index={1} />}
-            </motion.div>
-          </AnimatePresence>
-        )}
+        <motion.div
+          key={letter}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 space-y-2"
+        >
+          {candidates.map((song, i) => (
+            <SongTile key={song.id} song={song} index={i} onClick={() => pick(song)} />
+          ))}
+        </motion.div>
+
+        <button onClick={skip} className="mt-5 w-full text-xs text-white/35">
+          这格我不要，跳过 →
+        </button>
       </div>
     </main>
   );

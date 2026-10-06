@@ -33,6 +33,11 @@ export const useLibraryStore = create<LibraryState>()(
 
       clear: () => set({ songs: [], importedAt: undefined }),
     }),
-    { name: 'i-choose-this-song-library' }
+    {
+      name: 'i-choose-this-song-library',
+      version: 2,
+      // 旧版曲库里存在重复条目，升级时清空，重新导入
+      migrate: () => ({ songs: [], importedAt: undefined }),
+    }
   )
 );
