@@ -1,16 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toPng } from 'html-to-image';
 import RadarChart from '@/components/RadarChart';
 import BracketChart from '@/components/BracketChart';
+import MusicDna from '@/components/MusicDna';
+import AlbumCover from '@/components/AlbumCover';
+import PlayMore from '@/components/PlayMore';
 import { useGameStore } from '@/store/useGameStore';
 import { useMounted } from '@/lib/useMounted';
 import { encodeChallenge, choicesToPicks } from '@/lib/challenge';
 import { generatePersonality } from '@/lib/personality';
+import { personaIdentity, personaReport, recommendNext } from '@/lib/ai';
+import { getAllSongs } from '@/lib/musicProvider';
+import { idsOfTags } from '@/lib/personas';
+import { useProfileStore } from '@/store/useProfileStore';
 import type { ChallengePayload, PersonalityResult } from '@/lib/types';
 
 export default function Result() {
@@ -98,9 +105,23 @@ export default function Result() {
     }
   }, [winner, songs, choices, data, artistLabel]);
 
+  const result = useMemo(() => {
+    if (!winner) return null;
+    return data ?? generatePersonality({ artist: artistLabel, songs, choices, winnerId: winner.id });
+  }, [data, winner, artistLabel, songs, choices]);
+
+  const unlock = useProfileStore((s) => s.unlock);
+  const markBracket = useProfileStore((s) => s.markBracket);
+
+  useEffect(() => {
+    if (!result) return;
+    unlock(idsOfTags(result.tags));
+    markBracket();
+  }, [result, unlock, markBracket]);
+
   if (!mounted) return <main className="min-h-screen" />;
 
-  if (!winner) {
+  if (!winner || !result) {
     return (
       <main className="mx-auto min-h-screen max-w-[430px] p-6">
         <div className="mt-32 text-center">
@@ -117,8 +138,25 @@ export default function Result() {
     );
   }
 
-  const result = data ?? generatePersonality({ artist: artistLabel, songs, choices, winnerId: winner.id });
   const maxDim = [...result.dimensions].sort((a, b) => b.score - a.score)[0];
+  const identity = personaIdentity(result);
+
+  const mvUrl = `https://y.qq.com/portal/search.html#page=1&searchid=1&remoteplace=txt.yqq.top&t=mv&w=${encodeURIComponent(
+    `${artistLabel} ${winner.title}`
+  )}`;
+  const liveUrl = `https://y.qq.com/portal/search.html#page=1&searchid=1&remoteplace=txt.yqq.top&t=video&w=${encodeURIComponent(
+    `${artistLabel} ${winner.title} 现场`
+  )}`;
+
+  const report = useMemo(
+    () => (result && winner ? personaReport({ artist: artistLabel, champion: winner, result }) : ''),
+    [result, winner, artistLabel]
+  );
+  const library = useMemo(() => getAllSongs().filter((s) => s.artist === artistLabel), [artistLabel]);
+  const recs = useMemo(
+    () => (result ? recommendNext({ library, pickedIds: songs.map((s) => s.id), result }) : []),
+    [library, songs, result]
+  );
 
   return (
     <main className="mx-auto min-h-screen max-w-[430px] px-5 py-8 safe-bottom">
@@ -138,37 +176,72 @@ export default function Result() {
       {/* 分享卡：导出图片时截取这一块 */}
       <div
         id="share-card"
-        className="mt-5 rounded-[2rem] bg-gradient-to-br from-fuchsia-700 via-violet-800 to-slate-950 p-6 shadow-2xl"
+        className="mt-5 overflow-hidden rounded-[2rem] bg-gradient-to-br from-fuchsia-700 via-violet-800 to-slate-950 shadow-2xl"
       >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-white/65">你的{artistLabel}冠军单曲</p>
-            <h1 className="mt-2 text-4xl font-black leading-tight">{winner.title}</h1>
-            <p className="mt-2 text-white/65">
-              {winner.album} · {winner.year} 年
-              {winner.cover ? ' · 翻唱/现场版' : ''}
+        {/* 人格识别头 */}
+        <div className="relative px-6 pb-2 pt-8">
+          <div className="pointer-events-none absolute -top-16 left-1/2 h-44 w-44 -translate-x-1/2 rounded-full bg-fuchsia-400/30 blur-3xl" />
+
+          <div className="relative text-center">
+            <div className="flex items-center justify-center gap-2 text-[10px] tracking-[.3em] text-fuchsia-200/80">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+              AI 人格识别完成
+            </div>
+
+            <div className="mx-auto mt-5 flex h-24 w-24 items-center justify-center rounded-[1.75rem] border border-white/15 bg-white/10 text-5xl shadow-inner">
+              {identity.icon}
+            </div>
+
+            <h1 className="mt-5 bg-gradient-to-r from-amber-100 via-fuchsia-100 to-cyan-200 bg-clip-text text-[2.6rem] font-black leading-tight text-transparent">
+              {identity.name}
+            </h1>
+            {identity.sub && (
+              <p className="mt-1 text-lg font-bold text-white/70">× {identity.sub}</p>
+            )}
+
+            <p className="mt-3 font-mono text-[10px] tracking-[.25em] text-white/45">
+              {identity.en.toUpperCase()} · {identity.id}
             </p>
+
+            <p className="mt-4 text-base text-white/90">「{identity.slogan}」</p>
           </div>
-          <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] text-white/70">
-            {result.source === 'llm' ? 'AI 生成' : '人格引擎'}
-          </span>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {result.tags.map((t) => (
-            <span className="rounded-full bg-white/15 px-3 py-1 text-sm" key={t}>
-              #{t}
+        {/* 分隔线 */}
+        <div className="mx-6 my-6 h-px bg-white/10" />
+
+        {/* 冠军 + 标签 + 判词 + 雷达图 */}
+        <div className="px-6 pb-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs text-white/55">你的{artistLabel}冠军单曲</p>
+              <h2 className="mt-1 text-2xl font-black leading-tight">{winner.title}</h2>
+              <p className="mt-1 text-xs text-white/60">
+                {winner.album} · {winner.year} 年
+                {winner.cover ? ' · 翻唱/现场版' : ''}
+              </p>
+            </div>
+            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] text-white/70">
+              {result.source === 'llm' ? 'AI 生成' : '人格引擎'}
             </span>
-          ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {result.tags.map((t) => (
+              <span className="rounded-full bg-white/15 px-3 py-1 text-sm" key={t}>
+                #{t}
+              </span>
+            ))}
+          </div>
+
+          <p className="mt-5 border-l-2 border-fuchsia-200 pl-4 leading-7 text-white/85">{result.verdict}</p>
+
+          <div className="mt-6">
+            <RadarChart dimensions={result.dimensions} />
+          </div>
+
+          <p className="mt-6 text-center text-xs tracking-widest text-white/45">我选这首歌 · MUSIC PERSONA</p>
         </div>
-
-        <p className="mt-6 border-l-2 border-fuchsia-200 pl-4 leading-7 text-white/85">{result.verdict}</p>
-
-        <div className="mt-6">
-          <RadarChart dimensions={result.dimensions} />
-        </div>
-
-        <p className="mt-6 text-center text-xs tracking-widest text-white/45">我选这首歌 · MUSIC PERSONA</p>
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
@@ -183,6 +256,31 @@ export default function Result() {
           复制挑战链接
         </button>
       </div>
+
+      <section className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/[.08] to-cyan-500/[.06] p-5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">🧬</span>
+          <p className="text-xs tracking-[.2em] text-fuchsia-200">MUSIC DNA</p>
+        </div>
+        <h2 className="mt-2 text-xl font-black">AI 解码你的音乐基因</h2>
+        <div className="mt-4">
+          <MusicDna dimensions={result.dimensions} />
+        </div>
+      </section>
+
+      {report && (
+        <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🤖</span>
+            <p className="text-xs tracking-[.2em] text-cyan-200">AI PERSONA REPORT</p>
+            <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[9px] text-white/50">
+              {result.source === 'llm' ? '混元生成' : '人格引擎'}
+            </span>
+          </div>
+          <h2 className="mt-2 text-xl font-black">AI 人格报告</h2>
+          <p className="mt-3 text-sm leading-7 text-white/75">{report}</p>
+        </section>
+      )}
 
       {challenge && (
         <Link
@@ -210,6 +308,35 @@ export default function Result() {
               最高维度：<b className="text-fuchsia-100">{maxDim.name}</b> —— {maxDim.desc}
             </p>
           )}
+        </section>
+      )}
+
+      <section className="mt-6 rounded-3xl border border-amber-200/25 bg-gradient-to-br from-amber-400/12 to-rose-500/10 p-5">
+        <p className="text-xs tracking-[.2em] text-amber-100">REBELLION</p>
+        <div className="mt-3 flex items-end gap-3">
+          <span className="text-6xl font-black leading-none tabular-nums text-white">
+            {result.rebellion}
+          </span>
+          <span className="pb-1.5 text-sm text-white/60">% 反叛度</span>
+        </div>
+        <p className="mt-3 text-xs leading-6 text-white/60">
+          {result.rebellion >= 70
+            ? '你经常站在大众对面。热门榜单对你没什么约束力。'
+            : result.rebellion >= 45
+              ? '你一半跟随、一半反骨，听得懂流行，也留得住冷门。'
+              : '你的选择和大多数听众高度一致——你是那个会被榜单代表的人。'}
+        </p>
+      </section>
+
+      {result.hesitation && (
+        <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <p className="text-xs tracking-[.2em] text-cyan-200">HESITATION</p>
+          <h2 className="mt-2 text-xl font-black">你犹豫最久的一次</h2>
+          <p className="mt-3 text-sm leading-7 text-white/70">
+            在《{result.hesitation.winner}》和《{result.hesitation.loser}》之间，你停了{' '}
+            <b className="text-fuchsia-100">{result.hesitation.seconds} 秒</b>
+            ——全场最艰难的一次决定。
+          </p>
         </section>
       )}
 
@@ -269,6 +396,63 @@ export default function Result() {
         </div>
       </section>
 
+      <section className="mt-6 rounded-3xl border border-cyan-200/20 bg-cyan-300/[.06] p-5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">🎬</span>
+          <p className="text-xs tracking-[.2em] text-cyan-200">WATCH ON QQ MUSIC</p>
+        </div>
+        <h2 className="mt-2 text-xl font-black">光听还不够</h2>
+        <p className="mt-2 text-sm leading-7 text-white/70">
+          冠军《{winner.title}》画面感很强，AI 建议你顺便看看它的
+          <b className="text-cyan-100"> MV </b>或<b className="text-cyan-100"> 舞台现场</b>。
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <a
+            href={mvUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-cyan-100"
+          >
+            看 MV ↗
+          </a>
+          <a
+            href={liveUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-cyan-100"
+          >
+            看舞台 ↗
+          </a>
+        </div>
+      </section>
+
+      {recs.length > 0 && (
+        <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🎧</span>
+            <p className="text-xs tracking-[.2em] text-fuchsia-200">AI NEXT UP</p>
+          </div>
+          <h2 className="mt-2 text-xl font-black">AI 为你续杯</h2>
+          <p className="mt-1 text-xs text-white/45">按你的人格，这些歌大概率会击中你</p>
+          <div className="mt-4 space-y-2">
+            {recs.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 rounded-xl bg-black/15 p-2.5">
+                <AlbumCover song={s} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-white/85">{s.title}</p>
+                  <p className="truncate text-[10px] text-white/40">
+                    {s.album} · {s.year}
+                  </p>
+                </div>
+                <span className="shrink-0 max-w-[40%] truncate text-[10px] text-fuchsia-200/80">
+                  {s.tags.slice(0, 2).join(' · ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="mt-8">
         <BracketChart songs={songs} choices={choices} winner={winner} />
       </div>
@@ -286,6 +470,8 @@ export default function Result() {
       <Link href="/challenge" className="mt-3 block text-center text-sm text-fuchsia-200">
         查看好友挑战说明 →
       </Link>
+
+      <PlayMore active="bracket" />
 
       {shareUrl && (
         <div

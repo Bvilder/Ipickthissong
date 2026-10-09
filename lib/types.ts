@@ -54,6 +54,10 @@ export type PersonalityResult = {
   highlights: string[];
   /** 分数是怎么来的（可解释性） */
   reasons: Reason[];
+  /** 反叛度 0-100：与「大众偏好」相反的比例 */
+  rebellion: number;
+  /** 最纠结的一次选择 */
+  hesitation?: { winner: string; loser: string; seconds: number };
   /** 结果来源：本地规则引擎 或 大模型 */
   source: 'local' | 'llm';
 };

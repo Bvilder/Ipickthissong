@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import AlbumCover from '@/components/AlbumCover';
 import ArtistSelector from '@/components/ArtistSelector';
 import { getPopularSongs, DEFAULT_ARTIST } from '@/lib/musicProvider';
 import { useGameStore } from '@/store/useGameStore';
@@ -109,23 +110,34 @@ export default function Select() {
             />
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="mt-5 space-y-2">
             {songs.map((song, i) => {
               const on = selected.includes(song.id);
               return (
                 <button
                   onClick={() => toggle(song.id)}
                   key={song.id}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-xs transition ${
+                  className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
                     on
-                      ? 'border-fuchsia-300/70 bg-fuchsia-400/15 text-white shadow-sm shadow-fuchsia-800/20'
-                      : 'border-white/8 bg-black/10 text-white/42'
+                      ? 'border-fuchsia-300/60 bg-fuchsia-400/12 shadow-sm shadow-fuchsia-800/20'
+                      : 'border-white/8 bg-black/10'
                   }`}
                 >
-                  <span className="mr-1.5 text-[10px] text-white/30">{String(i + 1).padStart(2, '0')}</span>
-                  {song.title}
-                  <span className="float-right text-fuchsia-200">{on ? '✓' : ''}</span>
-                  <span className="mt-0.5 block text-[10px] text-white/30">{song.album}</span>
+                  <span className="w-4 shrink-0 text-center text-[10px] font-black text-white/25">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <AlbumCover song={song} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className={`block truncate text-sm font-bold ${on ? 'text-white' : 'text-white/45'}`}>
+                      {song.title}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[10px] text-white/35">
+                      {song.album} · {song.year}
+                    </span>
+                  </span>
+                  <span className={`shrink-0 text-sm ${on ? 'text-fuchsia-200' : 'text-white/15'}`}>
+                    {on ? '✓' : '＋'}
+                  </span>
                 </button>
               );
             })}

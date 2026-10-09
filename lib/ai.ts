@@ -1,4 +1,4 @@
-import type { Song } from './types';
+import type { Dimension, PersonalityResult, Song } from './types';
 
 /**
  * AI 文案引擎
@@ -248,6 +248,187 @@ export function reviewAlbum(input: {
   if (score >= 4)
     return `《${album}》的问题不是做得不好，而是想说的太多。${worstText || bestText}。${artist}在这里试了一次，但没完全站住。`;
   return `《${album}》是一次明显的失手。${worstText || bestText}。它会被归进「为了完整而听」的那一类。`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 以下为新增 AI 元素（同样遵循「规则兜底 + 未来接大模型」原则）
+// ══════════════════════════════════════════════════════════════
+
+/** 维度 → 基因编码 */
+export const DNA_CODE: Record<string, string> = {
+  旋律偏好: 'MEL',
+  节奏敏感: 'RHY',
+  情绪深度: 'EMO',
+  怀旧倾向: 'NOS',
+  冷门挖掘: 'DIS',
+  副歌执念: 'CHO',
+};
+
+/**
+ * 音乐 DNA：把 6 维人格编码成一段基因序列，并给出 AI 解读。
+ * 「AI 解码你的音乐基因」的核心视觉元素。
+ */
+export function musicDna(dimensions: Dimension[]): { sequence: string; reading: string } {
+  const sequence = dimensions
+    .map((d) => `${DNA_CODE[d.name] ?? d.name.slice(0, 1)}${d.score}`)
+    .join('·');
+
+  const sorted = [...dimensions].sort((a, b) => b.score - a.score);
+  const top = sorted[0];
+  const low = sorted[sorted.length - 1];
+
+  const reading =
+    `${top.name}（${top.score}）是你的显性基因，${low.name}（${low.score}）是你的隐性基因。` +
+    `显性决定了你会被什么击中，隐性决定了你会被什么放过——两段一叠加，就是你独一无二的听感体质。`;
+
+  return { sequence, reading };
+}
+
+/**
+ * AI 完整人格报告（长文）：替代单句判词，输出一段有纵深的分析。
+ */
+export function personaReport(input: { artist: string; champion: Song; result: PersonalityResult }): string {
+  const { artist, champion, result } = input;
+  const sorted = [...result.dimensions].sort((a, b) => b.score - a.score);
+  const top = sorted[0];
+  const second = sorted[1];
+  const low = sorted[sorted.length - 1];
+
+  const open =
+    `在「${artist}」的歌里，你最终把票投给了《${champion.title}》。` +
+    `这不是一次随机的偏好，而是一条高度一致的线索：你的${top.name}（${top.score}）明显高于常人，` +
+    `${second.name}（${second.score}）紧随其后。`;
+
+  const mid =
+    `你的每一次「留下 / 送走」，都在反复确认同一件事——${top.desc}。` +
+    `相比之下，${low.name}（${low.score}）是你最不在意的维度，${low.desc}对你几乎构不成干扰。`;
+
+  const end =
+    result.rebellion >= 70
+      ? `而且你的反叛度高达 ${result.rebellion}%，你并不在乎大众在听什么，只忠于自己的耳朵。`
+      : result.rebellion >= 45
+        ? `你的反叛度是 ${result.rebellion}%，在跟随与反骨之间保持着微妙的平衡。`
+        : `你的反叛度只有 ${result.rebellion}%，你的耳朵和大众的耳朵长得很像，这本身也是一种答案。`;
+
+  return `${open}${mid}${end} 音乐人格不是测试题做出来的，是你一次次选择之后，露出来的形状。`;
+}
+
+/**
+ * 好友灵魂契合：分析两人的打分关系，给出关系命名与解读。
+ */
+export function soulMatch(input: {
+  a: string;
+  b: string;
+  harmony: number;
+  aAvg: number;
+  bAvg: number;
+}): { label: string; text: string } {
+  const { a, b, harmony, aAvg, bAvg } = input;
+  const gap = Math.abs(aAvg - bAvg);
+
+  if (harmony >= 85) {
+    return {
+      label: '音乐灵魂伴侣',
+      text: `你们几乎用同一套标准在听歌。${gap < 0.5 ? '连打分都咬得很紧，' : ''}${a} 和 ${b} 的耳朵，可能上辈子就认识。`,
+    };
+  }
+  if (harmony >= 70) {
+    return {
+      label: '审美同频',
+      text: `大方向高度一致，只有几首歌存在分歧。你们听得到彼此，也各自留了一点空间。`,
+    };
+  }
+  if (harmony >= 55) {
+    return {
+      label: '互相补课',
+      text: `口味有距离，但正好互补：${a} 喜欢的，${b} 会去听一听；反之亦然。这是一段能互相拓宽的关系。`,
+    };
+  }
+  return {
+    label: '审美死对头',
+    text: `分歧不小${gap >= 1.5 ? '，一个偏严苛、一个偏慷慨' : ''}。但吵归吵，一起听歌反而最热闹。`,
+  };
+}
+
+/** 维度 → 关联标签（用于歌单续杯推荐） */
+const DIM_TAGS: Record<string, string[]> = {
+  旋律偏好: ['抒情', '唯美', '浪漫', '钢琴', '中国风', '古典', '旋律'],
+  节奏敏感: ['节奏', '电子', '说唱', '拉丁', '摇滚', 'R&B', '轻快'],
+  情绪深度: ['遗憾', '脆弱', '自省', '伤感', '深情', '忧伤', '沧桑'],
+  怀旧倾向: ['怀旧', '经典', '青春', '校园', '回忆', '早期', '夏天'],
+  冷门挖掘: ['实验', '梦幻', '宇宙', '文艺', '暗黑', '野性', '哲思'],
+  副歌执念: ['爆发', '高音', '张力', '热血', '磅礴', '励志', '坚定'],
+};
+
+/**
+ * AI 歌单续杯：按人格最高维度，从曲库里推荐「你会喜欢的下一批歌」。
+ */
+export function recommendNext(input: {
+  library: Song[];
+  pickedIds: string[];
+  result: PersonalityResult;
+}): Song[] {
+  const { library, pickedIds, result } = input;
+  const sorted = [...result.dimensions].sort((a, b) => b.score - a.score);
+  const tags = DIM_TAGS[sorted[0]?.name ?? '旋律偏好'] ?? [];
+  const picked = new Set(pickedIds);
+
+  const scored = library
+    .filter((s) => !picked.has(s.id))
+    .map((s) => ({ s, hit: s.tags.filter((t) => tags.includes(t)).length }))
+    .sort((a, b) => b.hit - a.hit);
+
+  const hits = scored.filter((x) => x.hit > 0).map((x) => x.s);
+  const rest = scored.filter((x) => x.hit === 0).map((x) => x.s);
+  return [...hits, ...rest].slice(0, 5);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 音乐人格身份（结果页主角）：把一个结果收敛成一个鲜明的人格形象
+// ══════════════════════════════════════════════════════════════
+
+/** 六维 → 人格原型 */
+const ARCHETYPES: Record<string, { name: string; icon: string; en: string; slogan: string }> = {
+  旋律偏好: { name: '旋律漫游者', icon: '🎵', en: 'Melody Wanderer', slogan: '旋律一响，你就认得出同类' },
+  节奏敏感: { name: '节奏脉冲', icon: '🥁', en: 'Rhythm Pulse', slogan: '鼓点一响，身体先替你回答' },
+  情绪深度: { name: '情绪深海', icon: '🌊', en: 'Emotion Diver', slogan: '你听的不是歌，是没说出口的话' },
+  怀旧倾向: { name: '时光收藏家', icon: '📼', en: 'Time Collector', slogan: '你听的是旧歌，也是旧日子' },
+  冷门挖掘: { name: '冷门猎手', icon: '🔭', en: 'Hidden Gem Hunter', slogan: '越冷的位置越容易被你捡到' },
+  副歌执念: { name: '副歌捕手', icon: '⚡', en: 'Chorus Catcher', slogan: '副歌一起来，你就投降' },
+};
+
+export type PersonaIdentity = {
+  /** 主人格名 */
+  name: string;
+  /** 副人格名（次高维度） */
+  sub?: string;
+  icon: string;
+  en: string;
+  slogan: string;
+  /** 人格编号，像检测报告编号 */
+  id: string;
+};
+
+/**
+ * 人格身份：把 6 维分数收敛成一个有名字、有图标、有编号的人格形象。
+ * 同样的选择永远得到同一个编号，可复现、可分享。
+ */
+export function personaIdentity(result: PersonalityResult): PersonaIdentity {
+  const sorted = [...result.dimensions].sort((a, b) => b.score - a.score);
+  const top = ARCHETYPES[sorted[0]?.name ?? ''] ?? ARCHETYPES['旋律偏好'];
+  const second = ARCHETYPES[sorted[1]?.name ?? ''];
+
+  const seedStr = result.dimensions.map((d) => `${d.score}`).join('-');
+  const id = `MP-${(hash(seedStr) % 0xffffff).toString(16).toUpperCase().padStart(6, '0')}`;
+
+  return {
+    name: top.name,
+    sub: second && second.name !== top.name ? second.name : undefined,
+    icon: top.icon,
+    en: top.en,
+    slogan: top.slogan,
+    id,
+  };
 }
 
 

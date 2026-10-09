@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toPng } from 'html-to-image';
 import AlphabetBoard from '@/components/AlphabetBoard';
 import RadarChart from '@/components/RadarChart';
+import PlayMore from '@/components/PlayMore';
 import { useAzStore } from '@/store/useAzStore';
 import { useMounted } from '@/lib/useMounted';
 import { generatePersonality } from '@/lib/personality';
-import { interpretAlphabet } from '@/lib/ai';
+import { interpretAlphabet, personaIdentity } from '@/lib/ai';
+import { idsOfTags } from '@/lib/personas';
+import { useProfileStore } from '@/store/useProfileStore';
 import type { PersonalityResult } from '@/lib/types';
 
 export default function AzResult() {
@@ -70,9 +73,31 @@ export default function AzResult() {
     }
   }, []);
 
+  const result = useMemo(
+    () =>
+      data ??
+      generatePersonality({
+        artist: artistLabel,
+        songs: library,
+        choices,
+        mode: 'az',
+        letterCount,
+      }),
+    [data, artistLabel, library, choices, letterCount]
+  );
+
+  const unlock = useProfileStore((s) => s.unlock);
+  const markAz = useProfileStore((s) => s.markAz);
+
+  useEffect(() => {
+    if (!result) return;
+    unlock(idsOfTags(result.tags));
+    markAz();
+  }, [result, unlock, markAz]);
+
   if (!mounted) return <main className="min-h-screen" />;
 
-  if (Object.keys(picks).length === 0) {
+  if (Object.keys(picks).length === 0 || !result) {
     return (
       <main className="mx-auto min-h-screen max-w-[430px] p-6">
         <div className="mt-32 text-center">
@@ -86,11 +111,8 @@ export default function AzResult() {
     );
   }
 
-  const result =
-    data ??
-    generatePersonality({ artist: artistLabel, songs: library, choices, mode: 'az', letterCount });
-
   const { story, badges } = interpretAlphabet(picks, library);
+  const identity = personaIdentity(result);
   const pickedSongs = Object.values(picks)
     .map((id) => library.find((s) => s.id === id))
     .filter((s): s is NonNullable<typeof s> => Boolean(s));
@@ -120,7 +142,12 @@ export default function AzResult() {
       >
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-black leading-tight">我的音乐字母表</h1>
+            <div className="flex items-center gap-1.5 text-sm font-bold text-fuchsia-200">
+              <span>{identity.icon}</span>
+              <span>{identity.name}</span>
+              {identity.sub && <span className="text-white/50">× {identity.sub}</span>}
+            </div>
+            <h1 className="mt-2 text-3xl font-black leading-tight">我的音乐字母表</h1>
             <p className="mt-1.5 text-sm text-white/65">
               {letterCount} 个字母 · {Object.keys(picks).length} 首歌 · 来自 {library.length} 首歌单
             </p>
@@ -244,9 +271,7 @@ export default function AzResult() {
         </div>
       </section>
 
-      <Link href="/" className="mt-6 block text-center text-sm text-white/45">
-        返回首页
-      </Link>
+      <PlayMore active="az" />
 
       {shareUrl && (
         <div

@@ -1,15 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toPng } from 'html-to-image';
 import AlbumCover from '@/components/AlbumCover';
+import PlayMore from '@/components/PlayMore';
 import { useCoStore } from '@/store/useCoStore';
 import { useMounted } from '@/lib/useMounted';
 import { analyzeAlbum, encodeRoom, scoreLabel } from '@/lib/co';
-import { reviewAlbum } from '@/lib/ai';
+import { reviewAlbum, soulMatch } from '@/lib/ai';
+import { idsOfTags } from '@/lib/personas';
+import { useProfileStore } from '@/store/useProfileStore';
 import { artistName } from '@/lib/musicProvider';
 import type { AlbumVote } from '@/lib/co';
 import type { Song } from '@/lib/types';
@@ -17,7 +20,13 @@ import type { Song } from '@/lib/types';
 export default function CoResult() {
   const router = useRouter();
   const mounted = useMounted();
-  const { songs, album, artistId, name, albumScore, scores, comment, people, reset } = useCoStore();
+  const { songs, album, artistId, name, scores, comment, people, reset } = useCoStore();
+
+  // 专辑总分 = 曲目平均分，不再单独手打
+  const albumScore = useMemo(
+    () => (scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0),
+    [scores]
+  );
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,6 +56,16 @@ export default function CoResult() {
       }),
     [album, artistId, cover, albumScore, myVote, songs.length]
   );
+
+  // AI 灵魂契合：两人以上时，给这段关系一个名字和一句解读
+  const soul = useMemo(() => {
+    if (all.length < 2 || result.harmony === undefined) return null;
+    const a = all[0];
+    const b = all[1];
+    const av = result.votes.find((v) => v.name === a.n)?.avg ?? a.a;
+    const bv = result.votes.find((v) => v.name === b.n)?.avg ?? b.a;
+    return soulMatch({ a: a.n, b: b.n, harmony: result.harmony, aAvg: av, bAvg: bv });
+  }, [all, result]);
 
   const share = useCallback(async () => {
     const el = document.getElementById('co-share-card');
@@ -85,6 +104,25 @@ export default function CoResult() {
       setToast('链接已复制，发给好友打分');
     }
   }, [artistId, album, songs, all]);
+
+  const unlock = useProfileStore((s) => s.unlock);
+  const markCo = useProfileStore((s) => s.markCo);
+
+  // 评分模式的人格：由你的打分习惯决定
+  const coTags = useMemo(() => {
+    const tags: string[] = [];
+    const spread = scores.length ? Math.max(...scores) - Math.min(...scores) : 0;
+    if (albumScore < 6) tags.push('严苛评审');
+    if (albumScore > 8.5) tags.push('慷慨听众');
+    if (spread > 4) tags.push('细节控');
+    return tags;
+  }, [albumScore, scores]);
+
+  useEffect(() => {
+    if (!songs.length) return;
+    unlock(idsOfTags(coTags));
+    markCo();
+  }, [coTags, songs.length, unlock, markCo]);
 
   if (!mounted) return <main className="min-h-screen" />;
 
@@ -136,7 +174,9 @@ export default function CoResult() {
                 {scoreLabel(albumScore)}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-white/55">{me.n} 的评分</p>
+            <p className="mt-2 text-[11px] text-white/55">
+              {me.n} 的评分 · 由 {songs.length} 首平均得出
+            </p>
           </div>
         </div>
 
@@ -181,7 +221,18 @@ export default function CoResult() {
         </button>
       </div>
 
-      <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5">
+      {soul && (
+        <section className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-br from-rose-500/[.08] to-fuchsia-500/[.06] p-5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">💞</span>
+            <p className="text-xs tracking-[.2em] text-rose-200">AI SOUL MATCH</p>
+          </div>
+          <h2 className="mt-2 text-xl font-black">AI 判定：{soul.label}</h2>
+          <p className="mt-3 text-sm leading-7 text-white/75">{soul.text}</p>
+        </section>
+      )}
+
+      <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5">
         <div className="flex items-center gap-2">
           <span className="text-sm">🤖</span>
           <p className="text-xs tracking-[.2em] text-fuchsia-200">AI 乐评</p>
@@ -281,9 +332,7 @@ export default function CoResult() {
         再评一张专辑
       </button>
 
-      <Link href="/" className="mt-3 block text-center text-sm text-white/40">
-        返回首页
-      </Link>
+      <PlayMore active="co" />
 
       {shareUrl && (
         <div

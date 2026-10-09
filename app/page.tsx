@@ -6,11 +6,16 @@ import { Suspense } from 'react';
 import { motion } from 'framer-motion';
 import ModeCard from '@/components/ModeCard';
 import { ARTISTS } from '@/lib/musicProvider';
+import { TOTAL_PERSONAS } from '@/lib/personas';
+import { useProfileStore, completionOf } from '@/store/useProfileStore';
+import { useMounted } from '@/lib/useMounted';
 
 function HomeInner() {
   const router = useRouter();
   const params = useSearchParams();
   const code = params.get('c');
+  const mounted = useMounted();
+  const unlocked = useProfileStore((s) => s.unlocked);
 
   return (
     <main className="grain relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-5 py-8 safe-bottom">
@@ -46,6 +51,29 @@ function HomeInner() {
             ))}
           </div>
         </motion.header>
+
+        {mounted && (
+          <Link
+            href="/profile"
+            className="mt-6 flex items-center gap-4 rounded-2xl border border-white/12 bg-white/[.045] p-4 transition hover:border-fuchsia-300/40"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold tracking-[.2em] text-fuchsia-200">MY PERSONA</p>
+              <p className="mt-1.5 text-sm font-bold text-white">
+                已解锁 {unlocked.length} / {TOTAL_PERSONAS} 种音乐人格
+              </p>
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-fuchsia-400 to-cyan-300 transition-all duration-700"
+                  style={{ width: `${completionOf(unlocked.length)}%` }}
+                />
+              </div>
+            </div>
+            <span className="shrink-0 text-lg font-black text-fuchsia-200">
+              {completionOf(unlocked.length)}%
+            </span>
+          </Link>
+        )}
 
         {code && (
           <motion.button

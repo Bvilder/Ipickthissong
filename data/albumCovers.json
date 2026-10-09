@@ -1,0 +1,30 @@
+{
+  "_readme": "专辑名 -> public/covers/ 下的文件名（如 xposed.jpg）或完整图片 URL。留空表示尚未提供。同名歌曲会共享同一张专辑封面。",
+  "gem": {
+    "Xposed": "xposed.jpg",
+    "单曲": "danqu.jpg",
+    "摩天动物园": "motiandongwuyuan.jpg",
+    "新的心跳": "xindexintiao.jpg",
+    "另一个童话": "lingyigetonghua.jpg",
+    "我是歌手第二季": "woshigeshoudierji.jpg",
+    "18...": "18....jpg",
+    "MySecret": "mysecret.jpg"
+  },
+  "jay": {
+    "七里香": "qilixiang.jpg",
+    "叶惠美": "yehuimei.jpg",
+    "魔杰座": "mojiezuo.jpg",
+    "我很忙": "wohenmang.jpg",
+    "十一月的萧邦": "11yuedexiaobang.jpg",
+    "范特西": "fantexi.jpg",
+    "周杰伦的床边故事": "zhoujielundechuangbiangushi.jpg",
+    "Jay": "jay.jpg",
+    "八度空间": "badukongjian.jpg",
+    "依然范特西": "yiranfantexi.jpg",
+    "不能说的秘密": "bunengshuodemimi.jpg",
+    "跨时代": "kuashidai.jpg",
+    "十二新作": "12xinzuo.jpg",
+    "哎呦，不错哦": "aiyobucuoo.jpg",
+    "单曲": "jay-danqu.jpg"
+  }
+}

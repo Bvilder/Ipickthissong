@@ -301,6 +301,9 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   if (top.score - bottom.score <= 12) tags.push('六边形听众');
   if ((scoreOf.get('chorus') ?? 0) >= 88) tags.push('副歌至上主义');
   if (mode === 'az') tags.push('字母表收藏家');
+  if (top.score >= 95) tags.push('极端分子');
+  if ((scoreOf.get('nostalgia') ?? 0) >= 95) tags.push('复古狂热');
+  if ((scoreOf.get('discovery') ?? 0) >= 92) tags.push('冷门偏执');
 
   const uniqueTags = Array.from(new Set(tags)).slice(0, 4);
 
@@ -370,6 +373,35 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
   const pool = mode === 'az' ? azTemplates : templates;
   const verdict = pool[hash(`${winnerId ?? 'az'}${choices.length}`) % pool.length];
 
+  // ── 反叛度：选了更冷门的那首，就算一次「与大众不同」 ──
+  let rebel = 0;
+  let compared = 0;
+  for (const c of choices) {
+    const ws = seedOf.get(c.winnerId);
+    const ls = seedOf.get(c.loserId);
+    if (ws === undefined || ls === undefined) continue;
+    compared += 1;
+    if (ws > ls) rebel += 1;
+  }
+  const rebellion = compared ? Math.round((rebel / compared) * 100) : 0;
+
+  // ── 最纠结的一次：同一轮内相邻两次选择的时间差 ──
+  let hesitation: PersonalityResult['hesitation'];
+  for (let i = 1; i < choices.length; i++) {
+    const prev = choices[i - 1];
+    const cur = choices[i];
+    if (prev.round !== cur.round) continue;
+    const sec = (cur.timestamp - prev.timestamp) / 1000;
+    if (sec < 1 || sec > 120) continue;
+    if (!hesitation || sec > hesitation.seconds) {
+      hesitation = {
+        winner: byId.get(cur.winnerId)?.title ?? '',
+        loser: byId.get(cur.loserId)?.title ?? '',
+        seconds: Math.round(sec),
+      };
+    }
+  }
+
   const reasons: Reason[] = [...scored]
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
@@ -386,6 +418,8 @@ export function generatePersonality(input: PersonalityInput): PersonalityResult 
     verdict,
     highlights,
     reasons,
+    rebellion,
+    hesitation,
     source: 'local',
   };
 }

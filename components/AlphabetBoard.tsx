@@ -21,7 +21,7 @@ export default function AlphabetBoard({
   const byId = new Map(songs.map((s) => [s.id, s]));
 
   return (
-    <div className="grid grid-cols-6 gap-1.5">
+    <div className="grid grid-cols-5 gap-2">
       {LETTERS.map((letter) => {
         const picked = picks[letter] ? byId.get(picks[letter]) : undefined;
         const count = counts?.[letter] ?? 0;

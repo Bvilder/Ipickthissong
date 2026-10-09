@@ -1,5 +1,7 @@
 import gem from '@/data/gem.json';
 import jay from '@/data/jay.json';
+import covers from '@/data/covers.json';
+import albumCovers from '@/data/albumCovers.json';
 import type { Song } from './types';
 import { letterOf } from './pinyin';
 
@@ -31,6 +33,9 @@ const LIBRARIES: Record<string, Song[]> = {
   gem: gem as Song[],
   jay: jay as Song[],
 };
+
+const COVERS = covers as Record<string, string>;
+const ALBUM_COVERS = albumCovers as unknown as Record<string, Record<string, string>>;
 
 /** 每位歌曲背后的文案（主观描述，不含音频），按歌手隔离，避免同名歌曲串台 */
 const DETAILS: Record<string, Record<string, Partial<Song>>> = {
@@ -92,9 +97,26 @@ const officialLinks = (artist: string, title: string): Song['links'] => [
   },
 ];
 
+/** 封面映射：data/covers.json，值为文件名（public/covers/）或完整 URL；留空表示尚未提供 */
+function coverOf(id: string): string | undefined {
+  const raw = COVERS[id];
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return undefined;
+  const v = raw.trim();
+  return /^https?:\/\//.test(v) ? v : `/covers/${v}`;
+}
+
+/** 专辑封面映射：data/albumCovers.json（按歌手 + 专辑名），同名歌曲共享同一张封面 */
+function albumCoverOf(artistId: string, album: string): string | undefined {
+  const raw = ALBUM_COVERS[artistId]?.[album];
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return undefined;
+  const v = raw.trim();
+  return /^https?:\/\//.test(v) ? v : `/covers/${v}`;
+}
+
 const decorate = (artistId: string, artist: string, song: Song): Song => ({
   ...song,
   ...DETAILS[artistId]?.[song.title],
+  coverUrl: coverOf(song.id) ?? albumCoverOf(artistId, song.album),
   letter: song.letter ?? letterOf(song.title),
   links: officialLinks(artist, song.title),
 });

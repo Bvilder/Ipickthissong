@@ -105,6 +105,10 @@ export default function Play() {
       ? commentOnChoice(lastWinner, lastLoser, last.round)
       : '';
 
+  // 爆冷：把全场前 3 热门的歌送走了
+  const loserRank = last ? songs.findIndex((s) => s.id === last.loserId) : -1;
+  const upset = loserRank >= 0 && loserRank <= 2 ? { song: songs[loserRank], rank: loserRank + 1 } : undefined;
+
   return (
     <main className="grain mx-auto min-h-screen max-w-[430px] px-5 py-7 safe-bottom">
       <div className="flex items-center justify-between text-sm">
@@ -148,6 +152,25 @@ export default function Play() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {upset && (
+          <motion.div
+            key={`upset-${upset.song.id}`}
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 14 }}
+            className="mt-5 flex items-center gap-3 rounded-2xl border border-amber-200/40 bg-gradient-to-r from-amber-400/20 to-rose-500/15 px-4 py-3.5"
+          >
+            <span className="text-2xl">🔥</span>
+            <div className="min-w-0">
+              <p className="text-sm font-black text-amber-100">爆冷！</p>
+              <p className="mt-0.5 text-xs leading-5 text-white/75">
+                全场第 {upset.rank} 热门的《{upset.song.title}》被你送走了
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {comment && (
           <motion.div
             key={comment}

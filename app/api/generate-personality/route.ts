@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSongsByIds } from '@/lib/musicProvider';
 import { generatePersonality } from '@/lib/personality';
+import { chatJSON } from '@/lib/llm';
 import type { Choice, PersonalityResult } from '@/lib/types';
 
 /**
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
   const prompt = buildPrompt(body.artist ?? '这位歌手', songs.map((s) => `${s.title}（${s.year}｜${s.tags.join('、')}）`), choices, songs.find((s) => s.id === winnerId)?.title ?? '');
 
   try {
-    const llm = await callLLM(prompt);
+    const llm = await callLLM(prompt, local);
     if (llm) return NextResponse.json({ ...llm, source: 'llm' } satisfies PersonalityResult);
   } catch {
     // 大模型不可用时，静默降级
@@ -70,38 +71,24 @@ function buildPrompt(artist: string, songList: string[], choices: Choice[], cham
   ].join('\n');
 }
 
-async function callLLM(prompt: string): Promise<PersonalityResult | null> {
-  const key = process.env.LLM_API_KEY;
-  if (!key) return null;
+async function callLLM(prompt: string, local: PersonalityResult): Promise<PersonalityResult | null> {
+  // 统一走 lib/llm.ts 的大模型层：未配置 key 时自动返回 null
+  const parsed = await chatJSON<Partial<PersonalityResult>>([
+    { role: 'system', content: '你是音乐人格分析师，只输出合法 JSON，不要输出任何多余文字。' },
+    { role: 'user', content: prompt },
+  ]);
 
-  const base = process.env.LLM_BASE_URL ?? 'https://api.hunyuan.cloud.tencent.com/v1';
-  const model = process.env.LLM_MODEL ?? 'hunyuan-turbo';
-
-  const res = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model,
-      temperature: 0.8,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  if (!res.ok) return null;
-
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const content = data.choices?.[0]?.message?.content ?? '';
-  const match = content.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-
-  const parsed = JSON.parse(match[0]) as Partial<PersonalityResult>;
-  if (!parsed.tags || !parsed.dimensions || !parsed.verdict) return null;
+  if (!parsed || !parsed.tags || !parsed.dimensions || !parsed.verdict) return null;
 
   return {
     tags: parsed.tags,
     dimensions: parsed.dimensions.map((d) => ({ name: d.name, score: d.score, desc: d.desc ?? '' })),
     verdict: parsed.verdict,
-    highlights: parsed.highlights ?? [],
-    reasons: parsed.reasons ?? [],
+    // 可解释性证据以本地计算为准，模型给了则覆盖
+    highlights: parsed.highlights?.length ? parsed.highlights : local.highlights,
+    reasons: parsed.reasons?.length ? parsed.reasons : local.reasons,
+    rebellion: local.rebellion,
+    hesitation: local.hesitation,
     source: 'llm',
   };
 }
